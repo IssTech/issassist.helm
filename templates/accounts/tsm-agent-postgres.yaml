@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: tsm-agent-postgres-auth
+  labels:
+    secret-generator.cs.sap.com/enabled: "true"
+stringData:
+  username: "tsm-agent-postgres"
+  password: "%generate:password:length=24"

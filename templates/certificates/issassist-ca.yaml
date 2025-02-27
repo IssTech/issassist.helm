@@ -1,0 +1,26 @@
+# IssAssist CA
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: issassist-ca
+spec:
+  isCA: true
+  commonName: issassist-ca
+  secretName: issassist-ca-cert
+  duration: {{ .Values.global.caCertDuration }}
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  issuerRef:
+    name: root-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io
+---
+# IssAssist CA Issuer
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: issassist-ca-issuer
+spec:
+  ca:
+    secretName: issassist-ca-cert

@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tsm-agent-postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: postgres
+      app.kubernetes.io/part-of: tsm-agent
+      app.kubernetes.io/component: database
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: postgres
+        app.kubernetes.io/part-of: tsm-agent
+        app.kubernetes.io/component: database
+    spec:
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+
+      containers:
+        - name: tsm-agent-postgres
+          image: 'postgres:17'
+          imagePullPolicy: IfNotPresent
+          command:
+            - "/bin/bash"
+          args:
+            - "-c"
+            - |
+              cp -R /etc/postgresql/_certs /etc/postgresql/certs && \
+              chown -R postgres:postgres /etc/postgresql/certs && \
+              chmod -R 755 /etc/postgresql/certs && \
+              chmod 600 /etc/postgresql/certs/tls.key && \
+              /usr/local/bin/docker-entrypoint.sh \
+                -c config_file=/etc/postgresql/postgresql.conf
+          ports:
+            - containerPort: 5432
+          env:
+            - name: "POSTGRES_DB"
+              value: "tsm-agent"
+            - name: "POSTGRES_USER_FILE"
+              value: "/etc/postgresql/auth/username"
+            - name: "POSTGRES_PASSWORD_FILE"
+              value: "/etc/postgresql/auth/password"
+            - name: "POSTGRES_HOST_AUTH_METHOD"
+              value: "scram-sha-256\nhostssl all all all cert clientcert=verify-full"
+          volumeMounts:
+            - name: tsm-agent-postgres-data
+              mountPath: "/var/lib/postgresql/data"
+            - name: postgres-config
+              mountPath: "/etc/postgresql/postgresql.conf"
+              subPath: "postgresql.conf"
+            - name: tsm-agent-postgres-cert
+              mountPath: "/etc/postgresql/_certs"
+            - name: tsm-agent-postgres-auth
+              mountPath: "/etc/postgresql/auth"
+            - name: issassist-ca-cert
+              mountPath: "/etc/postgresql/ca.crt"
+              subPath: "tls.crt"
+      volumes:
+        - name: tsm-agent-postgres-data
+          persistentVolumeClaim:
+            claimName: tsm-agent-postgres-data
+        - name: postgres-config
+          configMap:
+            name: postgres-config
+        - name: tsm-agent-postgres-cert
+          secret:
+            secretName: tsm-agent-postgres-cert
+        - name: tsm-agent-postgres-auth
+          secret:
+            secretName: tsm-agent-postgres-auth
+        - name: issassist-ca-cert
+          secret:
+            secretName: issassist-ca-cert

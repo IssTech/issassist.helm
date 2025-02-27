@@ -1,0 +1,19 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: tsm-agent-postgres-cert
+spec:
+  commonName: tsm-agent-postgres
+  secretName: tsm-agent-postgres-cert
+  duration: {{ .Values.global.certDuration }}
+  renewBefore: 72h
+  subject:
+    organizations:
+      - "IssTech AB"
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  issuerRef:
+    name: issassist-ca-issuer
+    kind: Issuer
+    group: cert-manager.io

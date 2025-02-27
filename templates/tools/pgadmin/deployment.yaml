@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pgadmin
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: pgadmin
+  template:
+    metadata:
+      labels:
+       app.kubernetes.io/name: pgadmin
+    spec:
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+
+      containers:
+        - name: pgadmin
+          image: 'dpage/pgadmin4:8'
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5050
+          envFrom:
+            - configMapRef:
+                name: pgadmin-config
+          env:
+            - name: PGADMIN_DEFAULT_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: pgadmin-auth
+                  key: "username"
+          volumeMounts:
+            - name: pgadmin-data
+              mountPath: "/var/lib/pgadmin"
+            - name: pgadmin-cert
+              mountPath: "/certs/server.cert"
+              subPath: "tls.crt"
+            - name: pgadmin-cert
+              mountPath: "/certs/server.key"
+              subPath: "tls.key"
+            - name: pgadmin-auth
+              mountPath: "/etc/pgadmin/auth"
+            - name: issassist-ca-cert
+              mountPath: "/etc/pgadmin/ca.crt"
+              subPath: "tls.crt"
+      volumes:
+        - name: pgadmin-data
+          persistentVolumeClaim:
+            claimName: pgadmin-data
+        - name: pgadmin-config
+          configMap:
+            name: pgadmin-config
+        - name: pgadmin-cert
+          secret:
+            secretName: pgadmin-cert
+        - name: pgadmin-auth
+          secret:
+            secretName: pgadmin-auth
+        - name: issassist-ca-cert
+          secret:
+            secretName: issassist-ca-cert

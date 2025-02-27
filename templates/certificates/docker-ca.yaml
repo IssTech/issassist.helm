@@ -1,0 +1,26 @@
+# Docker CA
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: docker-ca
+spec:
+  isCA: true
+  commonName: docker-ca
+  secretName: docker-ca-cert
+  duration: {{ .Values.global.caCertDuration }}
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  issuerRef:
+    name: root-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io
+---
+# Docker CA Issuer
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: docker-ca-issuer
+spec:
+  ca:
+    secretName: docker-ca-cert

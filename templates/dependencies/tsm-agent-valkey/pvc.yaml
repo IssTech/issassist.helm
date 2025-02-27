@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: tsm-agent-valkey-data
+  labels:
+    app.kubernetes.io/name: valkey
+    app.kubernetes.io/part-of: tsm-agent
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
