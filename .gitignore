@@ -1,6 +1,3 @@
-# IssAssist Exclution
-credentials.yaml
-
 # Local .terraform directories
 **/.terraform/*
 
@@ -42,8 +39,6 @@ terraform.rc
 *.pem
 *.cer
 *.cert
-secrets/*.env
-secrets/*.yaml
 
 # Development directory
 _dev
