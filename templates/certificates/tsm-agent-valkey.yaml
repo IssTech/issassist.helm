@@ -7,6 +7,15 @@ spec:
   secretName: tsm-agent-valkey-cert
   duration: {{ .Values.global.certDuration }}
   renewBefore: 72h
+  usages:
+    - client auth
+    - server auth
+    - key encipherment
+    - digital signature
+    - data encipherment
+  dnsNames:
+    - "tsm-agent-valkey"
+    - "localhost"
   subject:
     organizations:
       - "IssTech AB"

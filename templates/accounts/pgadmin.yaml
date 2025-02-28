@@ -5,5 +5,5 @@ metadata:
   labels:
     secret-generator.cs.sap.com/enabled: "true"
 stringData:
-  username: "pgadmin"
+  username: "admin@isstech.io"
   password: "%generate:password:length=24"

@@ -7,6 +7,7 @@ spec:
   commonName: messaging
   secretName: messaging-cert
   duration: {{ .Values.global.caCertDuration }}
+  renewBefore: 360h  # 15 days
   privateKey:
     algorithm: ECDSA
     size: 256

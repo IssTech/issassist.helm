@@ -7,6 +7,15 @@ spec:
   secretName: api-valkey-cert
   duration: {{ .Values.global.certDuration }}
   renewBefore: 72h
+  usages:
+    - client auth
+    - server auth
+    - key encipherment
+    - digital signature
+    - data encipherment
+  dnsNames:
+    - "api-valkey"
+    - "localhost"
   subject:
     organizations:
       - "IssTech AB"

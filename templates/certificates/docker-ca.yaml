@@ -8,6 +8,7 @@ spec:
   commonName: docker-ca
   secretName: docker-ca-cert
   duration: {{ .Values.global.caCertDuration }}
+  renewBefore: 360h  # 15 days
   privateKey:
     algorithm: ECDSA
     size: 256

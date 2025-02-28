@@ -3,7 +3,7 @@ IssAssist Helm Chart
 This is an IssAssist Helm chart for easy installation on Kubernetes 
 environments.
 
-Preparations
+Installation
 --------------
 
 ### Step 1: Install Cert Manager
@@ -15,9 +15,10 @@ installed twice._
 
 Follow the instructions in [Cert Manager's documentation](https://cert-manager.io/docs/installation/helm/).
 
-
 ### Step 2: Install IssAssist
 
 ```shell
+git clone https://github.com/IssTech/issassist.helm
+cd issassist.helm
 helm upgrade -i issassist --create-namespace --namespace issassist .
 ```
