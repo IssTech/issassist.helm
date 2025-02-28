@@ -26,7 +26,7 @@ cd secret-generator.helm/chart
 helm upgrade -i secret-generator --set fullnameOverride=issassist-secret-generator --create-namespace --namespace issassist .
 ```
 
-### Step 2: Install IssAssist
+### Step 3: Install IssAssist
 
 ```shell
 git clone --recurse-submodules https://github.com/IssTech/issassist.helm
