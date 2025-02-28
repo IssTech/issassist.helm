@@ -18,7 +18,7 @@ Follow the instructions in [Cert Manager's documentation](https://cert-manager.i
 ### Step 2: Install IssAssist
 
 ```shell
-git clone https://github.com/IssTech/issassist.helm
+git clone --recurse-submodules https://github.com/IssTech/issassist.helm
 cd issassist.helm
 helm upgrade -i issassist --create-namespace --namespace issassist .
 ```
