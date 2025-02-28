@@ -22,7 +22,7 @@ This is a necessary dependency, just like Cert Manager. It generates passwords.
 
 ```shell
 git clone https://github.com/IssTech/secret-generator.helm
-helm upgrade -i secret-generator \
+helm upgrade -i --wait secret-generator \
   --set fullnameOverride=issassist-secret-generator \
   --create-namespace --namespace issassist \
   secret-generator.helm/chart
@@ -43,7 +43,7 @@ Uninstall
 _This will not uninstall Cert Manager._
 
 ```shell
-helm uninstall secret-generator --namespace issassist --wait && \
-  helm uninstall issassist --namespace issassist --wait && \
-  kubectl delete namespace issassist --all=true --wait=true
+helm uninstall issassist --namespace issassist --wait ; \
+  helm uninstall secret-generator --namespace issassist --wait ; \
+  kubectl delete namespace issassist --wait=true
 ```
