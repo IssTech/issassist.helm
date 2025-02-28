@@ -39,11 +39,16 @@ helm upgrade -i issassist \
 
 
 Uninstall
---------------
+------------
 _This will not uninstall Cert Manager._
 
 ```shell
 helm uninstall issassist --namespace issassist --wait ; \
   helm uninstall secret-generator --namespace issassist --wait ; \
   kubectl delete namespace issassist --wait=true
+```
+
+Remove downloaded repositories:
+```shell
+rm -rf secret-generator.helm issassist.helm
 ```
