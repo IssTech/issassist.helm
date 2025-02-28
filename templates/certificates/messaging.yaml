@@ -9,8 +9,8 @@ spec:
   duration: {{ .Values.global.caCertDuration }}
   renewBefore: 360h  # 15 days
   privateKey:
-    algorithm: ECDSA
-    size: 256
+    algorithm: RSA
+    size: 4096
   issuerRef:
     name: root-issuer
     kind: ClusterIssuer
