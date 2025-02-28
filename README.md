@@ -38,6 +38,7 @@ helm upgrade -i issassist --create-namespace --namespace issassist .
 Uninstall
 --------------
 ```shell
-helm uninstall secret-generator --namespace issassist
-helm uninstall issassist --namespace issassist
+helm uninstall secret-generator --namespace issassist --wait
+helm uninstall issassist --namespace issassist --wait
+kubectl delete namespace issassist --all=true --wait=true
 ```
