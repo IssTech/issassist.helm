@@ -22,23 +22,28 @@ This is a necessary dependency, just like Cert Manager. It generates passwords.
 
 ```shell
 git clone https://github.com/IssTech/secret-generator.helm
-cd secret-generator.helm/chart
-helm upgrade -i secret-generator --set fullnameOverride=issassist-secret-generator --create-namespace --namespace issassist .
+helm upgrade -i secret-generator \
+  --set fullnameOverride=issassist-secret-generator \
+  --create-namespace --namespace issassist \
+  secret-generator.helm/chart
 ```
 
 ### Step 3: Install IssAssist
 
 ```shell
 git clone --recurse-submodules https://github.com/IssTech/issassist.helm
-cd issassist.helm
-helm upgrade -i issassist --create-namespace --namespace issassist .
+helm upgrade -i issassist \
+  --create-namespace --namespace issassist \
+  issassist.helm
 ```
 
 
 Uninstall
 --------------
+_This will not uninstall Cert Manager._
+
 ```shell
-helm uninstall secret-generator --namespace issassist --wait
-helm uninstall issassist --namespace issassist --wait
-kubectl delete namespace issassist --all=true --wait=true
+helm uninstall secret-generator --namespace issassist --wait && \
+  helm uninstall issassist --namespace issassist --wait && \
+  kubectl delete namespace issassist --all=true --wait=true
 ```
