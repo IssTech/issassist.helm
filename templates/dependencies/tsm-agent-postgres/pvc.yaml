@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: tsm-agent-postgres-data
+  name: tsm-agent-postgres
   labels:
     app.kubernetes.io/name: postgres
     app.kubernetes.io/part-of: tsm-agent

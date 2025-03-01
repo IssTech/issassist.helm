@@ -14,6 +14,9 @@ tsmAgentPostgres:
 
 
 docker-registry:
+  fullnameOverride: registry
+  nameOverride: registry
+
   # Default values for docker-registry.
   # This is a YAML-formatted file.
   # Declare variables to be passed into your templates.
@@ -43,12 +46,12 @@ docker-registry:
   # annotations:
   service:
     name: registry
-    type: ClusterIP
+    type: NodePort
     # sessionAffinity: None
     # sessionAffinityConfig: {}
     # clusterIP:
     port: 5000
-    # nodePort:
+    nodePort: 30105
     # loadBalancerIP:
     # loadBalancerSourceRanges:
     annotations: { }
@@ -84,7 +87,7 @@ docker-registry:
   #  memory: 128Mi
   persistence:
     accessMode: 'ReadWriteOnce'
-    enabled: false
+    enabled: true
     size: 10Gi
     # storageClass: '-'
 

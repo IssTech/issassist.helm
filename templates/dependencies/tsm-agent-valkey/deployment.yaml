@@ -33,7 +33,7 @@ spec:
           ports:
             - containerPort: 6379
           volumeMounts:
-            - name: tsm-agent-valkey-data
+            - name: tsm-agent-valkey
               mountPath: "/data"
             - name: valkey-config
               mountPath: "/etc/valkey/valkey.conf"
@@ -49,9 +49,9 @@ spec:
               mountPath: "/etc/valkey/ca.crt"
               subPath: "tls.crt"
       volumes:
-        - name: tsm-agent-valkey-data
+        - name: tsm-agent-valkey
           persistentVolumeClaim:
-            claimName: tsm-agent-valkey-data
+            claimName: tsm-agent-valkey
         - name: valkey-config
           configMap:
             name: valkey-config

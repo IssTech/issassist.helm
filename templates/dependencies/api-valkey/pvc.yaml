@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: api-valkey-data
+  name: api-valkey
   labels:
     app.kubernetes.io/name: valkey
     app.kubernetes.io/part-of: api

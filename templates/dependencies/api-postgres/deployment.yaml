@@ -46,7 +46,7 @@ spec:
             - name: "POSTGRES_HOST_AUTH_METHOD"
               value: "scram-sha-256\nhostssl all all all cert clientcert=verify-full"
           volumeMounts:
-            - name: api-postgres-data
+            - name: api-postgres
               mountPath: "/var/lib/postgresql/data"
             - name: postgres-config
               mountPath: "/etc/postgresql/postgresql.conf"
@@ -59,9 +59,9 @@ spec:
               mountPath: "/etc/postgresql/ca.crt"
               subPath: "tls.crt"
       volumes:
-        - name: api-postgres-data
+        - name: api-postgres
           persistentVolumeClaim:
-            claimName: api-postgres-data
+            claimName: api-postgres
         - name: postgres-config
           configMap:
             name: postgres-config

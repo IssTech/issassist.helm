@@ -33,7 +33,7 @@ spec:
           ports:
             - containerPort: 6379
           volumeMounts:
-            - name: api-valkey-data
+            - name: api-valkey
               mountPath: "/data"
             - name: valkey-config
               mountPath: "/etc/valkey/valkey.conf"
@@ -49,9 +49,9 @@ spec:
               mountPath: "/etc/valkey/ca.crt"
               subPath: "tls.crt"
       volumes:
-        - name: api-valkey-data
+        - name: api-valkey
           persistentVolumeClaim:
-            claimName: api-valkey-data
+            claimName: api-valkey
         - name: valkey-config
           configMap:
             name: valkey-config

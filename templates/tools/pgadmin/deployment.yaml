@@ -31,7 +31,7 @@ spec:
                   name: pgadmin-auth
                   key: "username"
           volumeMounts:
-            - name: pgadmin-data
+            - name: pgadmin
               mountPath: "/var/lib/pgadmin"
             - name: pgadmin-cert
               mountPath: "/certs/server.cert"
@@ -45,9 +45,9 @@ spec:
               mountPath: "/etc/pgadmin/ca.crt"
               subPath: "tls.crt"
       volumes:
-        - name: pgadmin-data
+        - name: pgadmin
           persistentVolumeClaim:
-            claimName: pgadmin-data
+            claimName: pgadmin
         - name: pgadmin-config
           configMap:
             name: pgadmin-config
