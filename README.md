@@ -14,7 +14,8 @@ ignore this step.
 Cert Manager manages certificates in the entire cluster and should never be 
 installed twice._
 
-Follow the instructions in [Cert Manager's documentation](https://cert-manager.io/docs/installation/helm/).
+Follow the instructions in 
+[Cert Manager's documentation](https://cert-manager.io/docs/installation/helm/).
 
 ### Step 2: Install Secret Generator
 

@@ -5,5 +5,5 @@ metadata:
   labels:
     secret-generator.cs.sap.com/enabled: "true"
 stringData:
-  username: "tsm-agent-postgres"
-  password: "%generate:password:length=24"
+  username: "tsm-agent"
+  password: "%generate:password:length=32;num_symbols=1;symbols=_"
