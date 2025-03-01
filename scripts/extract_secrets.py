@@ -29,11 +29,16 @@ for secret in ret.items:
     if secret_type == "auth":
         username = b64decode(secret.data["username"]).decode()
         password = b64decode(secret.data["password"]).decode()
-        Path(secret_name + ".env").write_text(
+        credentials_path = Path(secret_name + ".env")
+        credentials_path.chmod(0o600)
+        credentials_path.write_text(
             f"USERNAME={username}\nPASSWORD={password}"
         )
     elif secret_type == "cert":
         certificate = b64decode(secret.data["tls.crt"])
         private_key = b64decode(secret.data["tls.key"])
         Path(secret_name + ".crt").write_bytes(certificate)
-        Path(secret_name + ".key").write_bytes(private_key)
+        private_key_path = Path(secret_name + ".key")
+        private_key_path.chmod(0o600)
+        private_key_path.write_bytes(private_key)
+
