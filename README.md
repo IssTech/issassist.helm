@@ -14,8 +14,6 @@ You need access to the following repositories on your GitHub account:
 
 If you need access, [contact us](https://www.isstech.io/kontakt)!
 
-You also need a GitHub account.
-
 Follow [GitHub's documentation](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-personal-access-token-classic) 
 to generate a Personal Access Token (PAT).
 Make sure to select the scope **read:packages**, which allows Kubernetes to 
