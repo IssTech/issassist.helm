@@ -1,0 +1,13 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  namespace: sp-restore-tests
+  name: manage-sp-restore-tests
+subjects:
+  - kind: ServiceAccount
+    name: tsm-agent
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  kind: ClusterRole
+  name: sp-restore-tester
+  apiGroup: ""

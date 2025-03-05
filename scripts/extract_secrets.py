@@ -9,6 +9,9 @@ from pathlib import Path
 
 from kubernetes import client, config
 
+SECRET_NAME_REGEX = re.compile(r"(.*)-(auth|cert)$")
+INVALID_ENV_NAME_SYMBOL_REGEX = re.compile(r"[^_A-Z0-9]+")
+
 # Configs can be set in Configuration class directly or using helper utility
 config.load_kube_config()
 
@@ -20,20 +23,25 @@ for secret in ret.items:
     if not secret or not secret.metadata or not secret.data:
         continue
 
-    if not (m := re.match(r"(.*)-(auth|cert)$", secret.metadata.name)):
+    if not (m := re.match(SECRET_NAME_REGEX, secret.metadata.name)):
         continue
 
     secret_name = m.group(1)
     secret_type = m.group(2)
 
     if secret_type == "auth":
-        username = b64decode(secret.data["username"]).decode()
-        password = b64decode(secret.data["password"]).decode()
+        env_text = ""
+        for secret_var_name, secret_var_value in secret.data.items():
+            secret_var_value = b64decode(secret_var_value).decode()
+            secret_var_name = re.sub(
+                INVALID_ENV_NAME_SYMBOL_REGEX,
+                "",
+                secret_var_name.upper(),
+            )
+            env_text += f"{secret_var_name}={secret_var_value}\n"
         credentials_path = Path(secret_name + ".env")
-        credentials_path.chmod(0o600)
-        credentials_path.write_text(
-            f"USERNAME={username}\nPASSWORD={password}"
-        )
+        credentials_path.touch(mode=0o600, exist_ok=True)
+        credentials_path.write_text(env_text)
     elif secret_type == "cert":
         certificate = b64decode(secret.data["tls.crt"])
         private_key = b64decode(secret.data["tls.key"])

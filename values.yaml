@@ -2,16 +2,10 @@ global:
   certDuration: 8760h  # 1 year
   caCertDuration: 87600h  # 10 years
 
-
-apiPostgres:
-  # Enable development service
-  devServiceEnabled: true
-
-
-tsmAgentPostgres:
-  # Enable development service
-  devServiceEnabled: true
-
+imageCredentials:
+  registry: ghcr.io
+  username: your_github_username
+  password: your_token
 
 docker-registry:
   fullnameOverride: registry

@@ -1,0 +1,16 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: sp-restore-tester
+rules:
+- apiGroups: [""]
+  resources: ["deployments", "pods"]
+  verbs:
+    - "create"
+    - "delete"
+    - "deletecollection"
+    - "get"
+    - "list"
+    - "patch"
+    - "update"
+    - "watch"

@@ -4,6 +4,19 @@ This is an IssAssist Helm chart for easy installation on Kubernetes
 environments.
 
 
+Prerequisites
+--------------
+You will need to provide your Kubernetes deployment the token that IssTech has
+given you to access the IssAssist container images, as well as your GitHub 
+username.
+
+Define:
+```shell
+export GITHUB_USERNAME=your_github_username
+export GITHUB_TOKEN=your_token
+```
+
+
 Installation
 --------------
 
@@ -35,9 +48,10 @@ helm upgrade -i --wait secret-generator \
 git clone --recurse-submodules https://github.com/IssTech/issassist.helm
 helm upgrade -i issassist \
   --create-namespace --namespace issassist \
+  --set imageCredentials.username="$GITHUB_USERNAME" \
+  --set imageCredentials.password="$GITHUB_TOKEN"
   issassist.helm
 ```
-
 
 Uninstall
 ------------

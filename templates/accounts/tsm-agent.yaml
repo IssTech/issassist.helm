@@ -1,9 +1,0 @@
-apiVersion: v1
-kind: Secret
-metadata:
-  name: tsm-agent-auth
-  labels:
-    secret-generator.cs.sap.com/enabled: "true"
-stringData:
-  username: "tsm-agent"
-  password: "%generate:password:length=32;num_symbols=1;symbols=_"

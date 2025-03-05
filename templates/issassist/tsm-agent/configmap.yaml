@@ -1,0 +1,263 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tsm-agent-config
+  labels:
+    app.kubernetes.io/name: tsm-agent
+data:
+  config.toml: |
+    # Server Public IP Address
+    # ------------------------
+    # The public IP address of the server. This does not affect connectivity at all
+    # from clients to the server. It is merely used to inform clients to set a
+    # firewall rule to allow the server to establish connections to their services,
+    # such as Operation Centers.
+    [connection]
+
+    # An IP address or hostname to bind the server to.
+    # Required.
+    # bind = [value here]
+    bind = "0.0.0.0"
+
+    # The port to the server.
+    # Default:
+    # port = 50051
+    port = 50051
+
+    # The public IP address of the server. This does not affect connectivity at all
+    # from clients to the server. It is merely used to inform clients to set a
+    # firewall rule to allow the server to establish connections to their services,
+    # such as Operation Centers.
+    # Default:
+    # public_ip = "127.0.0.1"
+    public_ip = "127.0.0.1"
+
+    # Messaging Private Key
+    # ---------------------
+    # The private key that will be used during TLS server authentication, and for
+    # establishing secure connections.
+    [security]
+
+    # Set to True if you want to enforce TLS encryption, including mutual TLS
+    # authentication, between the server and its clients.
+    # Default:
+    # tls = true
+    tls = true
+
+    # A certificate belonging to a certificate authority (CA) that verifies the
+    # server certificate.
+    # Default:
+    # ca_cert_path =
+    ca_cert_path = "cert/issassist-ca.crt"
+
+    # The TLS server certificate. This will be used by the clients to authenticate
+    # the server, as well as establishing secure connections.
+    # Default:
+    # server_cert_path =
+    server_cert_path = "cert/tsm-agent.crt"
+
+    # The private key that will be used during TLS server authentication, and for
+    # establishing secure connections.
+    # Default:
+    # server_pkey_path =
+    server_pkey_path = "cert/tsm-agent.key"
+
+    # The private key that will be used during TLS server authentication, and for
+    # establishing secure connections.
+    # Default:
+    # messaging_pkey_path = "messaging.key"
+    messaging_pkey_path = "messaging.key"
+
+    locked=false
+
+    # Enable Database Debugging
+    # -------------------------
+    # Enables a detailed logs of database communication. It is preferable to disable
+    # this in a production environment.
+    [database]
+
+    # A hostname or an IP address to a PostgreSQL database.
+    # Required.
+    # host = [value here]
+    host = "tsm-agent-postgres"
+
+    # The port to a PostgreSQL database.
+    # Default:
+    # port = 5432
+    port = 5432
+
+    # PostgreSQL database username.
+    # Default:
+    # username = "postgres"
+    username = "tsm-agent"
+
+    # PostgreSQL database password.
+    # Required.
+    # password = [value here]
+
+    # PostgreSQL database name.
+    # Default:
+    # database_name = "issassist"
+    database_name = "tsm-agent"
+
+    # Set to True if you want to connect to the PostgreSQL database using TLS.
+    # Default:
+    # tls = false
+    tls = true
+
+    # A certificate belonging to a certificate authority (CA) which is recognized by
+    # the PostgreSQL server and which verifies the database client certificate.
+    # Default:
+    ca_cert_path = "cert/issassist-ca.crt"
+
+    # A certificate that will be used by the PostgreSQL server to authenticate the
+    # database TLS client.
+    # Default:
+    client_cert_path = "cert/tsm-agent.crt"
+
+    # A private key that will be used during database TLS client authentication.
+    # Default:
+    client_pkey_path = "cert/tsm-agent.key"
+
+    # The password to decrypt the TLS client private key.
+    # Default:
+    # client_pkey_password =
+
+    # If set to True (default), the hostname or IP address of the PostgreSQL server
+    # will be verified against its certificate. If set to False, only CA
+    # verification will be performed.
+    # Default:
+    # tls_verify_hostname = true
+    tls_verify_hostname = true
+
+    # Enables a detailed logs of database communication. It is preferable to disable
+    # this in a production environment.
+    # Default:
+    # debug_queries = false
+    debug_queries = false
+
+    # Redis TLS Connection
+    # --------------------
+    # Set to True if you want to connect to the Redis server using TLS.
+    [redis]
+
+    # A hostname or an IP address to a Redis server.
+    # Required.
+    # host = [value here]
+    host = "tsm-agent-valkey"
+
+    # The port to a Redis server.
+    # Default:
+    # port = 6379
+    port = 6379
+
+    # Redis username.
+    # Default:
+    # username = "default"
+    username = "tsm-agent"
+
+    # Redis password.
+    # Required.
+    # password = [value here]
+
+    # Set to True if you want to connect to the Redis server using TLS.
+    # Default:
+    # tls = false
+    tls = true
+
+    # A certificate belonging to a certificate authority (CA) which is recognized by
+    # the Redis server and which verifies the client certificate.
+    # Default:
+    ca_cert_path = "cert/issassist-ca.crt"
+
+    # A certificate that will be used by the Redis server to authenticate the TLS
+    # client.
+    # Default:
+    client_cert_path = "cert/tsm-agent.crt"
+
+    # A private key that will be used during TLS client authentication.
+    # Default:
+    client_pkey_path = "cert/tsm-agent.key"
+
+    # The password to decrypt the TLS client private key.
+    # Default:
+    # client_pkey_password =
+
+    # Local File Storage Root Path
+    # ----------------------------
+    # Root path for local file storage.
+    [file_storage]
+
+    # Root path for local file storage.
+    # Required.
+    # root_path = [value here]
+    root_path = "uploads"
+
+    # Task Heartbeat Interval
+    # -----------------------
+    # The interval between each heartbeat (in seconds). This defines how ofter tasks
+    # should announce that they are active, and how often the task manager should
+    # poll for activity.
+    [tasks]
+
+    # The maximum number of concurrent tasks. If this option is not set, then the
+    # number of CPU cores - 1 will be used as the limit.
+    # Default:
+    # concurrency_limit =
+    concurrency_limit = 1
+
+    # How long to wait (in seconds) for an unresponsive task before forcibly
+    # aborting it.
+    # Default:
+    # heartbeat_timeout = 300.0
+    heartbeat_timeout = 300.0
+
+    # The interval between each heartbeat (in seconds). This defines how ofter tasks
+    # should announce that they are active, and how often the task manager should
+    # poll for activity.
+    # Default:
+    # heartbeat_interval = 0.5
+    heartbeat_interval = 0.5
+
+    # Image Registry Configurations
+    # -------------------------------
+    # Configurations related to the Distribution container registry. This refers to
+    # an instance of https://hub.docker.com/_/registry . Documentation can be found
+    # at https://distribution.github.io/distribution/ .
+    [registry]
+
+    # The hostname or IP address of the Distribution container registry.
+    # Required.
+    # host = [value here]
+    host = "registry"
+
+    # The port number of the Distribution container registry.
+    # Default:
+    # port = 5000
+    port = 30105
+
+    # Kubernetes API Configurations
+    # -------------------------------
+    # Configurations for a Kubernetes cluster.
+    [kubernetes]
+
+    # A URL to the Kubernetes API.
+    # Required.
+    # api_url = [value here]
+    api_url = "https://kubernetes.default.svc"
+
+    # The namespace used to create restore tests within.
+    # Default:
+    # restore_test_namespace = "default"
+    restore_test_namespace = "sp-restore-tests"
+
+    # A certificate belonging to a certificate authority (CA) which is recognized by
+    # the Kubernetes API server and which verifies the client certificate.
+    # Required.
+    # ca_cert_path = [value here]
+    ca_cert_path = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+
+    # An authorization token for the Kubernetes API.
+    # Default:
+    # auth_token =
+    auth_token = "/var/run/secrets/kubernetes.io/serviceaccount/token"
