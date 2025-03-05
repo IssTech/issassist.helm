@@ -6,14 +6,25 @@ environments.
 
 Prerequisites
 --------------
-You will need to provide your Kubernetes deployment the token that IssTech has
-given you to access the IssAssist container images, as well as your GitHub 
-username.
+You need access to the following repositories on your GitHub account:
+- https://github.com/IssTech/issassist-utils
+- https://github.com/IssTech/IssAssist-api
+- https://github.com/IssTech/issassist-frontend
+- https://github.com/IssTech/issassist-tsm-agent
 
-Define:
+If you need access, [contact us](https://www.isstech.io/kontakt)!
+
+You also need a GitHub account.
+
+Follow [GitHub's documentation](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-personal-access-token-classic) 
+to generate a Personal Access Token (PAT).
+Make sure to select the scope **read:packages**, which allows Kubernetes to 
+access the IssAssist container images (packages) using the token.
+
+Then before the installation, define:
 ```shell
 export GITHUB_USERNAME=your_github_username
-export GITHUB_TOKEN=your_token
+export GITHUB_TOKEN=your_pat_token
 ```
 
 

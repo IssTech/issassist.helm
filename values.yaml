@@ -5,7 +5,7 @@ global:
 imageCredentials:
   registry: ghcr.io
   username: your_github_username
-  password: your_token
+  password: your_pat_token
 
 docker-registry:
   fullnameOverride: registry
