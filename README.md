@@ -12,7 +12,7 @@ You need access to the following repositories on your GitHub account:
 - https://github.com/IssTech/issassist-frontend
 - https://github.com/IssTech/issassist-tsm-agent
 
-If you need access, [contact us](https://www.isstech.io/kontakt)!
+If you don't have access and want to try out IssAssist, feel free to [contact us](https://www.isstech.io/kontakt)!
 
 Follow [GitHub's documentation](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-personal-access-token-classic) 
 to generate a Personal Access Token (PAT).
