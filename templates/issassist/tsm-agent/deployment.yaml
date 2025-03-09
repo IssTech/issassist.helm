@@ -1,9 +1,10 @@
+{{ if .Values.tsmAgent.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: tsm-agent
 spec:
-  replicas: 3
+  replicas: {{ .Values.tsmAgent.replicas }}
   selector:
     matchLabels:
       app.kubernetes.io/name: tsm-agent
@@ -92,3 +93,4 @@ spec:
         - name: messaging
           secret:
             secretName: messaging-cert
+{{ end }}

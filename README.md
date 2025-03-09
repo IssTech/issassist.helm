@@ -25,6 +25,23 @@ export GITHUB_USERNAME=your_github_username
 export GITHUB_TOKEN=your_pat_token
 ```
 
+### Insecure registry
+Internally, IssAssist uses a non-TLS secured container registry. 
+Because this registry uses plain-text HTTP, and not HTTPS, 
+your Kubernetes cluster must be configured to allow pulling images from it.
+
+#### Minikube
+If you are using [minikube](https://minikube.sigs.k8s.io/docs/) 
+on your development machine, delete your old cluster:
+```shell
+minikube delete
+```
+And then run it with the `--insecure-registry` flag:
+```shell
+mkdir -p ~/.minikube/files/etc/
+echo "$(minikube ip) registry" > ~/.minikube/files/etc/hosts
+minikube start --insecure-registry="10.0.0.0/8,192.168.0.0/16"
+```
 
 Installation
 --------------

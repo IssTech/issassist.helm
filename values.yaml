@@ -2,6 +2,18 @@ global:
   certDuration: 8760h  # 1 year
   caCertDuration: 87600h  # 10 years
 
+tsmAgent:
+  enabled: false
+  replicas: 3
+
+api:
+  enabled: true
+  replicas: 1
+
+webGui:
+  enabled: true
+  replicas: 1
+
 imageCredentials:
   registry: ghcr.io
   username: your_github_username
