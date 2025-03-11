@@ -3,7 +3,7 @@ global:
   caCertDuration: 87600h  # 10 years
 
 tsmAgent:
-  enabled: false
+  enabled: true
   replicas: 3
 
 api:
