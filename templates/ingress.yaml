@@ -1,0 +1,36 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: issassist-ingress
+spec:
+  rules:
+  - host: {{ .Values.global.publicDomainName }}
+    http:
+      paths:
+      - pathType: Prefix
+        path: "/"
+        backend:
+          service:
+            name: webgui
+            port:
+              number: 8000
+  - host: {{ .Values.global.publicDomainName }}
+    http:
+      paths:
+      - pathType: Prefix
+        path: "/api/v1"
+        backend:
+          service:
+            name: api
+            port:
+              number: 8000
+  - host: {{ .Values.global.publicDomainName }}
+    http:
+      paths:
+      - pathType: Prefix
+        path: "/pgadmin"
+        backend:
+          service:
+            name: pgadmin
+            port:
+              number: 5050

@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: webgui
+  labels:
+    app.kubernetes.io/name: webgui
+spec:
+  type: NodePort
+  ports:
+    - protocol: TCP
+      port: 8000
+      nodePort: 30108
+  selector:
+    app.kubernetes.io/name: webgui

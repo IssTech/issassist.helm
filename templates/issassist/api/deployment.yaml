@@ -20,7 +20,7 @@ spec:
 
       containers:
         - name: api
-          image: 'ghcr.io/isstech/issassist-api:1.0.0-beta.6'
+          image: {{ .Values.api.image }}
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8000

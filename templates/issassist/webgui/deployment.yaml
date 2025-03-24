@@ -1,0 +1,38 @@
+{{ if .Values.webGUI.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: webgui
+spec:
+  replicas: {{ .Values.webGUI.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: webgui
+  template:
+    metadata:
+      labels:
+       app.kubernetes.io/name: webgui
+    spec:
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      imagePullSecrets:
+        - name: isstech-repository-auth
+
+      containers:
+        - name: webgui
+          image: {{ .Values.webGUI.image }}
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          env:
+            - name: IA_API_URL
+              value: '{{- template "apiUrl" . }}'
+          volumeMounts:
+            - name: messaging
+              mountPath: "/config/tsm-agent-messaging.crt"
+              subPath: "tls.crt"
+      volumes:
+        - name: messaging
+          secret:
+            secretName: messaging-cert
+{{ end }}

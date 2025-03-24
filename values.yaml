@@ -5,13 +5,10 @@ global:
   certDuration: 8760h  # 1 year
   caCertDuration: 87600h  # 10 years
 
-tsmAgent:
-  enabled: true
-  replicas: 3
-
 api:
   enabled: true
   replicas: 1
+  image: 'ghcr.io/isstech/issassist-api:1.0.0-beta.6'
 
   mail:
     smtpHost: ""
@@ -22,9 +19,15 @@ api:
     fromEmailAddress: ""
     fromName: ""
 
-webGui:
+webGUI:
   enabled: true
   replicas: 3
+  image: 'ghcr.io/isstech/issassist-webgui:1.0.0-beta.5'
+
+tsmAgent:
+  enabled: true
+  replicas: 3
+  image: 'ghcr.io/isstech/issassist-tsm-agent:1.0.0-beta.2'
 
 imageCredentials:
   registry: ghcr.io

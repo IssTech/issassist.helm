@@ -33,17 +33,17 @@ spec:
           volumeMounts:
             - name: pgadmin
               mountPath: "/var/lib/pgadmin"
-            - name: pgadmin-cert
-              mountPath: "/certs/server.cert"
-              subPath: "tls.crt"
-            - name: pgadmin-cert
-              mountPath: "/certs/server.key"
-              subPath: "tls.key"
+            # - name: pgadmin-cert
+            #   mountPath: "/certs/server.cert"
+            #   subPath: "tls.crt"
+            # - name: pgadmin-cert
+            #   mountPath: "/certs/server.key"
+            #   subPath: "tls.key"
             - name: pgadmin-auth
               mountPath: "/etc/pgadmin/auth"
-            - name: issassist-ca-cert
-              mountPath: "/etc/pgadmin/ca.crt"
-              subPath: "tls.crt"
+            # - name: issassist-ca-cert
+            #   mountPath: "/etc/pgadmin/ca.crt"
+            #   subPath: "tls.crt"
       volumes:
         - name: pgadmin
           persistentVolumeClaim:
