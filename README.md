@@ -9,7 +9,7 @@ Prerequisites
 You need access to the following repositories on your GitHub account:
 - https://github.com/IssTech/issassist-utils
 - https://github.com/IssTech/issassist-api
-- https://github.com/IssTech/issassist-frontend
+- https://github.com/IssTech/issassist-webgui
 - https://github.com/IssTech/issassist-tsm-agent
 
 If you don't have access and want to try out IssAssist, feel free to [contact us](https://www.isstech.io/kontakt)!

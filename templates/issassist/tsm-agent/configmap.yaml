@@ -24,25 +24,11 @@ data:
     # port = 50051
     port = 50051
 
-    # The public IP address of the server. This does not affect connectivity at all
-    # from clients to the server. It is merely used to inform clients to set a
-    # firewall rule to allow the server to establish connections to their services,
-    # such as Operation Centers.
-    # Default:
-    # public_ip = "127.0.0.1"
-    public_ip = "127.0.0.1"
-
-    # Messaging Private Key
-    # ---------------------
-    # The private key that will be used during TLS server authentication, and for
-    # establishing secure connections.
-    [security]
-
     # Set to True if you want to enforce TLS encryption, including mutual TLS
     # authentication, between the server and its clients.
     # Default:
-    # tls = true
-    tls = true
+    # tls = false
+    tls = false
 
     # A certificate belonging to a certificate authority (CA) that verifies the
     # server certificate.
@@ -62,13 +48,41 @@ data:
     # server_pkey_path =
     server_pkey_path = "cert/tsm-agent.key"
 
+    # The public IP address of the server. This does not affect connectivity at all
+    # from clients to the server. It is merely used to inform clients to set a
+    # firewall rule to allow the server to establish connections to their services,
+    # such as Operation Centers.
+    # Default:
+    # public_ip = "127.0.0.1"
+    public_ip = "127.0.0.1"
+
+    # Messaging Private Key
+    # ---------------------
+    # The private key that will be used during TLS server authentication, and for
+    # establishing secure connections.
+    [security]
+
     # The private key that will be used during TLS server authentication, and for
     # establishing secure connections.
     # Default:
     # messaging_pkey_path = "messaging.key"
     messaging_pkey_path = "messaging.key"
 
-    locked=false
+    # The certificate that will be used during TLS server authentication, and for
+    # establishing secure connections.
+    # Default:
+    # messaging_cert_path = "messaging.crt"
+    messaging_cert_path = "messaging.crt"
+
+    # A flag determining if Operations Center and Storage Protect connection
+    # information should be read-only. This eliminates a large attack surface which
+    # can be exposed if an adversary registers a malicious OC or Storage Protect
+    # server that can output incorrect data when queried by IssAssist. The option
+    # can be set to True after all connection information has been registered
+    # successfully.
+    # Default:
+    # locked = false
+    locked = false
 
     # Enable Database Debugging
     # -------------------------

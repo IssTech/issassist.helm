@@ -1,0 +1,234 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: api-config
+  labels:
+    app.kubernetes.io/name: api
+data:
+  config.toml: |
+    # Security Configurations
+    # -------------------------
+    # Configurations related to user authentication and other security options.
+    [security]
+
+    # A secret key used to sign and verify authentication tokens. Must be a 64-byte
+    # random string. You can generate one using "openssl rand -hex 32".
+    # Required.
+    # jwt_secret_key = [value here]
+
+    # How long it takes for an authentication token to expire (in seconds). Default
+    # is 300 seconds (5 minutes).
+    # Default:
+    # token_expiration = 300
+    token_expiration = 30000
+
+    # Web browsers use CORS to determine if a frontend, with a specific origin, is
+    # allowed by the backend to make certain requests. It is important that you
+    # specify all frontend/client origins here.
+    # Default:
+    # cors_allow_origins = ["http://127.0.0.1", "http://localhost"]
+    cors_allow_origins = ["http://127.0.0.1", "http://localhost"]
+
+    # If set to true, all cookies will require TLS. If set to false, cross-site
+    # cookies between IssAssist API and a GUI (for example) will be disabled! This
+    # option defaults to false for convenience when installing or developing
+    # IssAssist. For production, it is recommended to use a reverse proxy with TLS,
+    # and set this option to true.
+    # Default:
+    # secure_cookies = false
+    secure_cookies = true
+
+    # E-Mail Configurations
+    # -----------------------
+    # Configurations related to the e-mail protocols.
+    [mail]
+
+    # A hostname or an IP address to an SMTP server.
+    # Default:
+    # smtp_host =
+
+    # The port to the SMTP server.
+    # Default:
+    # smtp_port = 25
+
+    # Set to True if you want to connect to the SMTP server using TLS.
+    # Default:
+    # smtp_tls = true
+
+    # SMTP username.
+    # Default:
+    # smtp_username = ""
+
+    # SMTP password.
+    # Default:
+    # smtp_password = ""
+
+    # All messages will be sent from this e-mail address.
+    # Default:
+    # from_email_address =
+
+    # All messages will be sent from this name.
+    # Default:
+    # from_name = "IssAssist"
+    from_name = "IssAssist"
+
+    # Database Configurations
+    # -------------------------
+    # Configurations related to the PostgreSQL database.
+    [database]
+
+    # A hostname or an IP address to a PostgreSQL database.
+    # Required.
+    # host = [value here]
+    host = "api-postgres"
+
+    # PostgreSQL database password.
+    # Required.
+    # password = [value here]
+
+    # The port to a PostgreSQL database.
+    # Default:
+    # port = 5432
+    port = 5432
+
+    # PostgreSQL database username.
+    # Default:
+    # username = "postgres"
+    username = "api"
+
+    # PostgreSQL database name.
+    # Default:
+    # database_name = "issassist"
+    database_name = "api"
+
+    # Set to True if you want to connect to the PostgreSQL database using TLS.
+    # Default:
+    # tls = false
+    tls = true
+
+    # A certificate belonging to a certificate authority (CA) which is recognized by
+    # the PostgreSQL server and which verifies the database client certificate.
+    # Default:
+    ca_cert_path = "cert/issassist-ca.crt"
+
+    # A certificate that will be used by the PostgreSQL server to authenticate the
+    # database TLS client.
+    # Default:
+    client_cert_path = "cert/api.crt"
+
+    # A private key that will be used during database TLS client authentication.
+    # Default:
+    client_pkey_path = "cert/api.key"
+
+    # The password to decrypt the TLS client private key.
+    # Default:
+    # client_pkey_password =
+
+    # If set to True (default), the hostname or IP address of the PostgreSQL server
+    # will be verified against its certificate. If set to False, only CA
+    # verification will be performed.
+    # Default:
+    # tls_verify_hostname = true
+    tls_verify_hostname = true
+
+    # Enables a detailed logs of database communication. It is preferable to disable
+    # this in a production environment.
+    # Default:
+    # debug_queries = false
+    debug_queries = false
+
+    # IssAssist TSM Agent
+    # ---------------------
+    # Configuration for an IssAssist TSM agent.
+    [tsm_agent]
+
+    # A hostname or an IP address to an IssAssist TSM Agent host.
+    # Required.
+    # host = [value here]
+    host = "tsm-agent"
+
+    # The port to a IssAssist TSM agent.
+    # Default:
+    # port = 50051
+    port = 50051
+
+    # Enable TLS for the connection with the IssAssist TSM agent.
+    # Default:
+    # tls = true
+    tls = false
+
+    # A certificate belonging to a certificate authority (CA) which is recognized by
+    # the TSM agent and which verifies `tsm_agent.client_cert_path`.
+    # Default:
+    ca_cert_path = "cert/issassist-ca.crt"
+
+    # A TLS certificate that the IssAssist TSM Agent accepts.
+    # Default:
+    client_cert_path = "cert/api.crt"
+
+    # A private key for `tsm_agent.client_cert_path`.
+    # Default:
+    client_pkey_path = "cert/api.key"
+
+    # Redis Configurations
+    # ----------------------
+    # Configurations related to the Redis server.
+    [redis]
+
+    # A hostname or an IP address to a Redis server.
+    # Required.
+    # host = [value here]
+    host = "api-valkey"
+
+    # Redis password.
+    # Required.
+    # password = [value here]
+
+    # The port to a Redis server.
+    # Default:
+    # port = 6379
+    port = 6379
+
+    # Redis username.
+    # Default:
+    # username = "default"
+    username = "api"
+
+    # Redis database number.
+    # Default:
+    # database = 0
+    database = 0
+
+    # Set to True if you want to connect to the Redis server using TLS.
+    # Default:
+    # tls = false
+    tls = true
+
+    # A certificate belonging to a certificate authority (CA) which is recognized by
+    # the Redis server and which verifies the client certificate.
+    # Default:
+    ca_cert_path = "cert/issassist-ca.crt"
+
+    # A certificate that will be used by the Redis server to authenticate the TLS
+    # client.
+    # Default:
+    client_cert_path = "cert/api.crt"
+
+    # A private key that will be used during TLS client authentication.
+    # Default:
+    client_pkey_path = "cert/api.key"
+
+    # The password to decrypt the TLS client private key.
+    # Default:
+    # client_pkey_password =
+
+    # This lock timeout is regularly set as the TTL for active locks by the watchdog
+    # until they expire. This is not the true expiration time of the locks, but a
+    # smaller temporary one. The point is to, in case of a crash, prevent dangling
+    # locks from stalling other running processes. It should be set to something
+    # high enough to always give the watchdog a chance to renew the lock TTL on the
+    # server, but low enough to not let the lock unnecessarily stall other processes
+    # after a crash.
+    # Default:
+    # lock_timeout = 120
+    lock_timeout = 120

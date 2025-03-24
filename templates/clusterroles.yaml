@@ -4,7 +4,11 @@ metadata:
   name: sp-restore-tester
 rules:
 - apiGroups: [""]
-  resources: ["deployments", "pods"]
+  resources:
+    - "deployments"
+    - "pods"
+    - "persistentvolumeclaims"
+    - "persistentvolumes"
   verbs:
     - "create"
     - "delete"

@@ -1,4 +1,7 @@
 global:
+  publicDomainName: "localhost"
+  publicPort: 443
+
   certDuration: 8760h  # 1 year
   caCertDuration: 87600h  # 10 years
 
@@ -10,14 +13,28 @@ api:
   enabled: true
   replicas: 1
 
+  mail:
+    smtpHost: ""
+    smtpPort: 25
+    smtpTLS: true
+    smtpUsername: ""
+    smtpPassword: ""
+    fromEmailAddress: ""
+    fromName: ""
+
 webGui:
   enabled: true
-  replicas: 1
+  replicas: 3
 
 imageCredentials:
   registry: ghcr.io
   username: your_github_username
   password: your_pat_token
+
+
+##################
+## Dependencies ##
+##################
 
 docker-registry:
   fullnameOverride: registry
