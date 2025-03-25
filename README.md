@@ -70,13 +70,27 @@ helm upgrade -i --wait secret-generator \
 
 ### Step 3: Install IssAssist
 
+If you want to use another domain name than "issassist", you can change it in 
+`global.publicDomainName="issassist"` below before executing the commands.
+
 ```shell
 git clone --recurse-submodules https://github.com/IssTech/issassist.helm
 helm upgrade -i issassist \
   --create-namespace --namespace issassist \
+  --set global.publicDomainName="issassist" \
   --set imageCredentials.username="$GITHUB_USERNAME" \
   --set imageCredentials.password="$GITHUB_TOKEN"
   issassist.helm
+```
+
+If you are not using publicly registered domain name, make sure to add your
+domain name (default is "issassist") to your `/etc/hosts` file and make it
+point to the IP address of your Kubernetes cluster.
+
+#### Custom domain name on Minikube
+If you use Minikube, run:
+```shell
+echo "$(minikube ip) issassist" >> /etc/hosts
 ```
 
 Uninstall
