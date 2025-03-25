@@ -93,6 +93,20 @@ If you use Minikube, run:
 echo "$(minikube ip) issassist" >> /etc/hosts
 ```
 
+### Step 4: Log in
+To log in, go to: https://issassist/
+
+> [!NOTE]
+> The URL will of course be different if you have changed the domain name on 
+> Step 3.
+
+The username is **admin** and the password can be fetched by running:
+```shell
+kubectl get secrets admin-auth -n issassist -o jsonpath='{.data.password}' | base64 -d
+```
+
+Enjoy!
+
 Uninstall
 ------------
 _This will not uninstall Cert Manager._
