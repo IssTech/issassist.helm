@@ -22,7 +22,7 @@ api:
 webGUI:
   enabled: true
   replicas: 3
-  image: 'ghcr.io/isstech/issassist-webgui:1.0.0-beta.5'
+  image: 'ghcr.io/isstech/issassist-webgui:1.0.0-beta.6'
 
 tsmAgent:
   enabled: true

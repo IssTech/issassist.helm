@@ -1,0 +1,33 @@
+# Self-signed ingress certificate
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: ingress-cert
+spec:
+  commonName: {{ .Values.global.publicDomainName }}
+  secretName: ingress-cert
+  duration: {{ .Values.global.certDuration }}
+  renewBefore: 360h  # 15 days
+  usages:
+    - server auth
+  dnsNames:
+    - {{ .Values.global.publicDomainName }}
+  subject:
+    organizations:
+      - "IssTech AB"
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  issuerRef:
+    name: root-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io
+---
+# Self-signed ingress certificate issuer
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: ingress-issuer
+spec:
+  ca:
+    secretName: ingress-cert
