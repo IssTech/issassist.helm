@@ -41,6 +41,7 @@ spec:
               chmod 755 -R /app/data/cert && \
               chmod 600 /app/data/cert/tsm-agent.key && \
               chmod 600 /app/data/messaging.key && \
+              export IA_K8S_AUTH_TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token) && \
               /entrypoint.sh
           livenessProbe:
             grpc:

@@ -274,4 +274,3 @@ data:
     # An authorization token for the Kubernetes API.
     # Default:
     # auth_token =
-    auth_token = "/var/run/secrets/kubernetes.io/serviceaccount/token"

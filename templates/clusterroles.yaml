@@ -3,19 +3,14 @@ kind: ClusterRole
 metadata:
   name: sp-restore-tester
 rules:
-- apiGroups: [""]
+- apiGroups: ["", "apps"]
   resources:
     - "deployments"
     - "pods"
+    - "pods/log"
+    - "pods/exec"
     - "persistentvolumeclaims"
     - "persistentvolumes"
     - "configmaps"
   verbs:
-    - "create"
-    - "delete"
-    - "deletecollection"
-    - "get"
-    - "list"
-    - "patch"
-    - "update"
-    - "watch"
+    - "*"

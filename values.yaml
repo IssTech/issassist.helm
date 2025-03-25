@@ -27,7 +27,7 @@ webGUI:
 tsmAgent:
   enabled: true
   replicas: 3
-  image: 'ghcr.io/isstech/issassist-tsm-agent:1.0.0-beta.2'
+  image: 'ghcr.io/isstech/issassist-tsm-agent:1.0.0-beta.5'
 
 imageCredentials:
   registry: ghcr.io
