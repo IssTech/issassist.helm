@@ -79,7 +79,7 @@ helm upgrade -i issassist \
   --create-namespace --namespace issassist \
   --set global.publicDomainName="issassist" \
   --set imageCredentials.username="$GITHUB_USERNAME" \
-  --set imageCredentials.password="$GITHUB_TOKEN"
+  --set imageCredentials.password="$GITHUB_TOKEN" \
   issassist.helm
 ```
 
