@@ -63,8 +63,6 @@ spec:
             - name: tsm-agent-config
               mountPath: "/app/data/config.toml"
               subPath: "config.toml"
-            - name: tsm-agent
-              mountPath: "/app/data/uploads"
             - name: tsm-agent-cert
               mountPath: "/mnt/certs"
             - name: issassist-ca-cert
@@ -73,9 +71,6 @@ spec:
             - name: messaging
               mountPath: "/mnt/messaging-certs"
       volumes:
-        - name: tsm-agent
-          persistentVolumeClaim:
-            claimName: tsm-agent
         - name: tsm-agent-config
           configMap:
             name: tsm-agent-config

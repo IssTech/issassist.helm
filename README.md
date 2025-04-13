@@ -80,7 +80,7 @@ helm upgrade -i issassist \
   --set global.publicDomainName="issassist" \
   --set imageCredentials.username="$GITHUB_USERNAME" \
   --set imageCredentials.password="$GITHUB_TOKEN" \
-  issassist.helm
+  ./issassist.helm
 ```
 
 If you are not using publicly registered domain name, make sure to add your

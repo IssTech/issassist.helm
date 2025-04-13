@@ -117,17 +117,12 @@ spec:
             - name: api-config
               mountPath: "/app/data/config.toml"
               subPath: "config.toml"
-            - name: api
-              mountPath: "/app/data/uploads"
             - name: api-cert
               mountPath: "/mnt/certs"
             - name: issassist-ca-cert
               mountPath: "/mnt/issassist-ca.crt"
               subPath: "tls.crt"
       volumes:
-        - name: api
-          persistentVolumeClaim:
-            claimName: api
         - name: api-config
           configMap:
             name: api-config
