@@ -248,7 +248,7 @@ data:
     # The port number of the Distribution container registry.
     # Default:
     # port = 5000
-    port = 30105
+    port = 5000
 
     # Kubernetes API Configurations
     # -------------------------------
