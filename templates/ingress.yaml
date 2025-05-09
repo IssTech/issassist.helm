@@ -2,7 +2,17 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: issassist-ingress
+  annotations:
+  {{ if eq .Values.global.ingress.tls.issuerType "cluster" }}
+    cert-manager.io/cluster-issuer: {{ .Values.global.ingress.tls.issuer }}
+  {{ else if eq .Values.global.ingress.tls.issuerType "issuer" }}
+    cert-manager.io/issuer: {{ .Values.global.ingress.tls.issuer }}
+  {{ else if eq .Values.global.ingress.tls.issuerType "disabled" }}
+    {}
+  {{ end }}
+
 spec:
+  ingressClassName: {{ .Values.global.ingress.ingressClassName }}
   rules:
   - host: {{ .Values.global.publicDomainName }}
     http:
@@ -37,4 +47,8 @@ spec:
   tls:
     - hosts:
         - {{ .Values.global.publicDomainName }}
-      secretName: ingress-cert
+      secretName: {{ if eq .Values.global.ingress.tls.issuerType "disabled" }}
+        self-signed-ingress-cert
+      {{ else }}
+        ingress-cert
+      {{ end }}

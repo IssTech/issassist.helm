@@ -2,10 +2,10 @@
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: ingress-cert
+  name: self-signed-ingress-cert
 spec:
   commonName: {{ .Values.global.publicDomainName }}
-  secretName: ingress-cert
+  secretName: self-signed-ingress-cert
   duration: {{ .Values.global.certDuration }}
   renewBefore: 360h  # 15 days
   usages:
@@ -27,7 +27,7 @@ spec:
 apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
-  name: ingress-issuer
+  name: self-signed-ingress-issuer
 spec:
   ca:
-    secretName: ingress-cert
+    secretName: self-signed-ingress-cert

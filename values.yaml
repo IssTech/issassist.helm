@@ -2,8 +2,24 @@ global:
   publicDomainName: "localhost"
   publicPort: 443
 
+  # Lifetimes of internal certificates
   certDuration: 8760h  # 1 year
   caCertDuration: 87600h  # 10 years
+
+  # Ingress
+  ingress:
+    ingressClassName: nginx
+
+    # TLS certificate settings
+    tls:
+      # Issuer type. Can be:
+      # - cluster (uses cert-manager.io/cluster-issuer annotation)
+      # - issuer (uses cert-manager.io/issuer annotation)
+      # - disabled (disables public certificate usage and use a built-in
+      #             self-signed certificate instead)
+      issuerType: "disabled"
+      # Issuer or ClusterIssuer name.
+      issuer: ""
 
 api:
   enabled: true
@@ -27,7 +43,7 @@ webGUI:
 tsmAgent:
   enabled: true
   replicas: 3
-  image: 'ghcr.io/isstech/issassist-tsm-agent:1.0.0-rc.3'
+  image: 'ghcr.io/isstech/issassist-tsm-agent:1.0.0-rc.10'
 
 imageCredentials:
   registry: ghcr.io
