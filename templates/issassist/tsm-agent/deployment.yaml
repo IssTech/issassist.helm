@@ -59,6 +59,30 @@ spec:
                 secretKeyRef:
                   name: tsm-agent-valkey-auth
                   key: "password"
+            {{- if .Values.tsmAgent.restoreTests.storageClass }}
+            - name: IA_K8S_RESTORE_TEST_STORAGE_CLASS_NAME
+              value: {{ .Values.tsmAgent.restoreTests.storageClass }}
+            {{- end }}
+            {{- if .Values.tsmAgent.restoreTests.priorityClass }}
+            - name: IA_K8S_RESTORE_TEST_PRIORITY_CLASS_NAME
+              value: {{ .Values.tsmAgent.restoreTests.priorityClass }}
+            {{- end }}
+            {{- if .Values.tsmAgent.restoreTests.metadataVolume.size }}
+            - name: IA_RT_METADATA_VOLUME_SIZE
+              value: {{ .Values.tsmAgent.restoreTests.metadataVolume.size }}
+            {{- end }}
+            {{- if .Values.tsmAgent.restoreTests.restoreVolume.sizeConstant }}
+            - name: IA_RT_VOLUME_SIZE_CONSTANT
+              value: {{ .Values.tsmAgent.restoreTests.restoreVolume.sizeConstant }}
+            {{- end }}
+            {{- if .Values.tsmAgent.restoreTests.restoreVolume.extraDirectorySize }}
+            - name: IA_RT_VOLUME_EXTRA_DIR_SIZE
+              value: {{ .Values.tsmAgent.restoreTests.restoreVolume.extraDirectorySize }}
+            {{- end }}
+            {{- if .Values.tsmAgent.restoreTests.restoreVolume.extraFileSize }}
+            - name: IA_RT_VOLUME_EXTRA_FILE_SIZE
+              value: {{ .Values.tsmAgent.restoreTests.restoreVolume.extraFileSize }}
+            {{- end }}
           volumeMounts:
             - name: tsm-agent-config
               mountPath: "/app/data/config.toml"

@@ -10,4 +10,7 @@ spec:
     - ReadWriteOnce
   resources:
     requests:
-      storage: 1Gi
+      storage: {{ .Values.api.valkey.volumeSize | quote }}
+  {{- if .Values.api.valkey.storageClass }}
+  storageClassName: {{ .Values.api.valkey.storageClass | quote }}
+  {{- end }}

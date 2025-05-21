@@ -10,4 +10,7 @@ spec:
     - ReadWriteOnce
   resources:
     requests:
-      storage: 1Gi
+      storage: {{ .Values.api.postgres.volumeSize | quote }}
+  {{- if .Values.api.postgres.storageClass }}
+  storageClassName: {{ .Values.api.postgres.storageClass | quote }}
+  {{- end }}

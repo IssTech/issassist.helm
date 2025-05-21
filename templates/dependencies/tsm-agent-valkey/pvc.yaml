@@ -10,4 +10,7 @@ spec:
     - ReadWriteOnce
   resources:
     requests:
-      storage: 1Gi
+      storage: {{ .Values.tsmAgent.valkey.volumeSize | quote }}
+  {{- if .Values.tsmAgent.valkey.storageClass }}
+  storageClassName: {{ .Values.tsmAgent.valkey.storageClass | quote }}
+  {{- end }}

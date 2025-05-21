@@ -1,0 +1,18 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: tsm-client-building
+spec:
+  schedule: {{ .Values.tsmAgent.tsmClientImage.buildSchedule }}
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: tsm-client-builder
+              image: gcr.io/kaniko-project/executor:latest
+              args:
+                - "--context=git://github.com/IssTech/tsm-client-docker.git"
+                - "--destination=registry:5000/tsm-client:latest"
+                - "--insecure-registry=registry:5000"
+          restartPolicy: OnFailure

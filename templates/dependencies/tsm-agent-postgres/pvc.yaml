@@ -10,4 +10,7 @@ spec:
     - ReadWriteOnce
   resources:
     requests:
-      storage: 1Gi
+      storage: {{ .Values.tsmAgent.postgres.volumeSize | quote }}
+  {{- if .Values.tsmAgent.postgres.storageClass }}
+  storageClassName: {{ .Values.tsmAgent.postgres.storageClass | quote }}
+  {{- end }}

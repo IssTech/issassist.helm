@@ -6,9 +6,12 @@ global:
   certDuration: 8760h  # 1 year
   caCertDuration: 87600h  # 10 years
 
+  # Priority class of IssAssist components.
+  priorityClass: ~
+
   # Ingress
   ingress:
-    ingressClassName: nginx
+    ingressClass: nginx
 
     # TLS certificate settings
     tls:
@@ -23,7 +26,6 @@ global:
 
 api:
   enabled: true
-  replicas: 1
   image: 'ghcr.io/isstech/issassist-api:1.0.0-beta.6'
 
   mail:
@@ -35,6 +37,14 @@ api:
     fromEmailAddress: ""
     fromName: ""
 
+  postgres:
+    storageClass: ~
+    volumeSize: "10Gi"
+
+  valkey:
+    storageClass: ~
+    volumeSize: "1Gi"
+
 webGUI:
   enabled: true
   replicas: 3
@@ -43,12 +53,50 @@ webGUI:
 tsmAgent:
   enabled: true
   replicas: 3
-  image: 'ghcr.io/isstech/issassist-tsm-agent:1.0.0-rc.10'
+  image: 'ghcr.io/isstech/issassist-tsm-agent:1.0.0-rc.13'
+
+  tsmClientImage:
+    buildSchedule: "0 0 * * 1"  # Every Monday, 00:00
+
+  restoreTests:
+    # Storage class for restore test volumes.
+    # Recommendation: prioritize capacity over random I/O performance.
+    storageClass: ~
+    # Priority class of the restore test pods.
+    # This should be less than any default priority class of the cluster, and
+    # less than `global.priorityClass`.
+    priorityClass: ~
+    # Metadata volume settings. This volume is used to store metadata
+    # (not restored files) during restore testing.
+    metadataVolume:
+      # Note: Suffixing with "B" here is obligatory.
+      size: "1GiB"
+    # Restore volume settings. This volume holds restored inodes as well as
+    # some metadata during restore testing.
+    restoreVolume:
+      # The restore volume is used to store restored inodes as well as some
+      # metadata (not restored files) during restore testing.
+      # The size of the volume is defined using the formula:
+      # `constant + dsmc_reported_size + (file_count * EFS) +
+      # (dir_count * EDS).
+      # EFS := "Extra File Size" and EDS := "Extra Directory Size".
+      # Note: Suffixing with "B" here is obligatory.
+      sizeConstant: "1GiB"
+      extraFileSize: "1KiB"
+      extraDirectorySize: "1KiB"
+
+  postgres:
+    storageClass: ~
+    volumeSize: "20Gi"
+
+  valkey:
+    storageClass: ~
+    volumeSize: "1Gi"
 
 imageCredentials:
-  registry: ghcr.io
-  username: your_github_username
-  password: your_pat_token
+  registry: "ghcr.io"
+  username: "your_github_username"
+  password: "your_pat_token"
 
 
 ##################
