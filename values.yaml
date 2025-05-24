@@ -82,8 +82,8 @@ tsmAgent:
       # EFS := "Extra File Size" and EDS := "Extra Directory Size".
       # Note: Suffixing with "B" here is obligatory.
       sizeConstant: "1GiB"
-      extraFileSize: "1KiB"
-      extraDirectorySize: "1KiB"
+      extraFileSize: "4KiB"
+      extraDirectorySize: "4KiB"
 
   postgres:
     storageClass: ~
