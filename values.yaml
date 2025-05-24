@@ -53,7 +53,7 @@ webGUI:
 tsmAgent:
   enabled: true
   replicas: 3
-  image: 'ghcr.io/isstech/issassist-tsm-agent:1.0.0'
+  image: 'ghcr.io/isstech/issassist-tsm-agent:latest'
 
   tsmClientImage:
     buildSchedule: "0 0 * * 1"  # Every Monday, 00:00
