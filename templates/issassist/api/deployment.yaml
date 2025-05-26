@@ -21,7 +21,7 @@ spec:
       containers:
         - name: api
           image: {{ .Values.api.image }}
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           ports:
             - containerPort: 8000
           command:

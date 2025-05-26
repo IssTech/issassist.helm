@@ -22,7 +22,7 @@ spec:
       containers:
         - name: api-valkey
           image: 'valkey/valkey:8'
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           command:
             - "/bin/bash"
           args:

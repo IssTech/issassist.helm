@@ -22,7 +22,7 @@ spec:
       containers:
         - name: tsm-agent
           image: {{ .Values.tsmAgent.image }}
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           ports:
             - containerPort: 50051
           command:

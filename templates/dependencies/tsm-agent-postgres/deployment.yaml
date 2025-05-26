@@ -22,7 +22,7 @@ spec:
       containers:
         - name: tsm-agent-postgres
           image: 'postgres:17'
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           command:
             - "/bin/bash"
           args:

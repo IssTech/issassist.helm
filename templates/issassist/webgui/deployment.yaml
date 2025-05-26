@@ -21,7 +21,7 @@ spec:
       containers:
         - name: webgui
           image: {{ .Values.webGUI.image }}
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           ports:
             - containerPort: 8000
           env:
