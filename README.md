@@ -81,12 +81,12 @@ If you use Minikube, run:
 echo "$(minikube ip) issassist" >> /etc/hosts
 ```
 
-### Step 4: Log in
+### Step 3: Log in
 To log in, go to: https://issassist/
 
 > [!NOTE]
 > The URL will of course be different if you have changed the domain name on 
-> Step 3.
+> Step 2.
 
 The username is **admin** and the password can be fetched by running:
 ```shell
