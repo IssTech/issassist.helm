@@ -5,10 +5,9 @@ metadata:
   labels:
     app.kubernetes.io/name: pgadmin
 spec:
-  type: NodePort
+  type: ClusterIP
   ports:
     - protocol: TCP
       port: 5050
-      nodePort: 30100
   selector:
     app.kubernetes.io/name: pgadmin

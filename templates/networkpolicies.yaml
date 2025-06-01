@@ -1,0 +1,15 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: block-external-egress-connections
+spec:
+  podSelector:
+    matchLabels:
+      external-egress: block
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        # Allow connections to any pod in the cluster.
+        - namespaceSelector: {}
+    # Implicitly reject connections to everywhere else.

@@ -15,6 +15,7 @@ spec:
         app.kubernetes.io/name: valkey
         app.kubernetes.io/part-of: tsm-agent
         app.kubernetes.io/component: dictionary-server
+        external-egress: block
     spec:
       dnsPolicy: ClusterFirst
       restartPolicy: Always
@@ -28,6 +29,7 @@ spec:
           args:
             - "-c"
             - |
+              [ -e /etc/valkey/auth/password ] && \
               create-acl.sh && \
               valkey-server /etc/valkey/valkey.conf
           ports:

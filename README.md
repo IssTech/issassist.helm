@@ -56,19 +56,7 @@ installed twice._
 Follow the instructions in 
 [Cert Manager's documentation](https://cert-manager.io/docs/installation/helm/).
 
-### Step 2: Install Secret Generator
-
-This is a necessary dependency, just like Cert Manager. It generates passwords.
-
-```shell
-git clone https://github.com/IssTech/secret-generator.helm
-helm upgrade -i --wait secret-generator \
-  --set fullnameOverride=issassist-secret-generator \
-  --create-namespace --namespace issassist \
-  secret-generator.helm/chart
-```
-
-### Step 3: Install IssAssist
+### Step 2: Install IssAssist
 
 If you want to use another domain name than "issassist", you can change it in 
 `global.publicDomainName="issassist"` below before executing the commands.
@@ -113,11 +101,10 @@ _This will not uninstall Cert Manager._
 
 ```shell
 helm uninstall issassist --namespace issassist --wait ; \
-  helm uninstall secret-generator --namespace issassist --wait ; \
   kubectl delete namespace issassist --wait=true
 ```
 
-Remove downloaded repositories:
+Remove the downloaded repository:
 ```shell
-rm -rf secret-generator.helm issassist.helm
+rm -rf issassist.helm
 ```

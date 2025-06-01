@@ -2,8 +2,8 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: api-auth
-  labels:
-    secret-generator.cs.sap.com/enabled: "true"
+  annotations:
+    secret-generator.v1.mittwald.de/autogenerate: "password"
+    secret-generator.v1.mittwald.de/length: "32"
 stringData:
   username: "api"
-  password: "%generate:password:length=32;num_symbols=1;symbols=_"

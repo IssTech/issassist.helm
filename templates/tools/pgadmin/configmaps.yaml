@@ -1,0 +1,59 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pgadmin-config
+data:
+  PGADMIN_DEFAULT_PASSWORD_FILE: "/etc/pgadmin/auth/password"
+  PGADMIN_SERVER_JSON_FILE: "/mnt/servers.json"
+  # PGADMIN_ENABLE_TLS: "True"
+  PGADMIN_LISTEN_PORT: "5050"
+  PGADMIN_CONFIG_SHOW_GRAVATAR_IMAGE: "False"
+  PGADMIN_CONFIG_ENHANCED_COOKIE_PROTECTION: "False"
+  PGADMIN_CONFIG_SESSION_COOKIE_SAMESITE: "'None'"
+  PGADMIN_CONFIG_SESSION_COOKIE_SECURE: "True"
+  PGADMIN_CONFIG_SESSION_COOKIE_HTTPONLY: "False"
+  PGADMIN_CONFIG_ENABLE_SERVER_PASS_EXEC_CMD: "True"
+  SCRIPT_NAME: "/pgadmin"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pgadmin-servers-config
+data:
+  servers.json: |
+    {
+        "Servers": {
+            "1": {
+                "Name": "api",
+                "Group": "Servers",
+                "Host": "api-postgres",
+                "Port": 5432,
+                "MaintenanceDB": "postgres",
+                "Username": "api",
+                "PasswordExecCommand": "echo \"$API_PASSWORD\"",
+                "ConnectionParameters": {
+                    "sslmode": "verify-full",
+                    "connect_timeout": 10,
+                    "sslcert": "/api/tls.crt",
+                    "sslkey": "/api/tls.key",
+                    "sslrootcert": "/issassist-ca.crt"
+                }
+            },
+            "2": {
+                "Name": "tsm-agent",
+                "Group": "Servers",
+                "Host": "tsm-agent-postgres",
+                "Port": 5432,
+                "MaintenanceDB": "postgres",
+                "Username": "tsm-agent",
+                "PasswordExecCommand": "echo \"$TSM_AGENT_PASSWORD\"",
+                "ConnectionParameters": {
+                    "sslmode": "verify-full",
+                    "connect_timeout": 10,
+                    "sslcert": "/tsm-agent/tls.crt",
+                    "sslkey": "/tsm-agent/tls.key",
+                    "sslrootcert": "/issassist-ca.crt"
+                }
+            }
+        }
+    }

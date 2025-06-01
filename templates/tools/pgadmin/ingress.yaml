@@ -1,39 +1,35 @@
+{{ if .Values.pgAdmin.ingress.enabled }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: issassist-ingress
+  name: pgadmin-ingress
   annotations:
+    # Traefik: Allow up to 2GB upload size
+    traefik.http.middlewares.limit.buffering.maxRequestBodyBytes: "2000000000"
+    # Nginx: Allow up to 2GB upload size
+    nginx.ingress.kubernetes.io/proxy-body-size: "2g"
   {{ if eq .Values.global.ingress.tls.issuerType "cluster" }}
     cert-manager.io/cluster-issuer: {{ .Values.global.ingress.tls.issuer }}
   {{ else if eq .Values.global.ingress.tls.issuerType "issuer" }}
     cert-manager.io/issuer: {{ .Values.global.ingress.tls.issuer }}
-  {{ else if eq .Values.global.ingress.tls.issuerType "disabled" }}
-    {}
   {{ end }}
+  {{- range $key, $value := .Values.pgAdmin.ingress.annotations }}
+    {{ $key }}: {{ $value | quote }}
+  {{- end }}
 
 spec:
   ingressClassName: {{ .Values.global.ingress.ingressClass }}
   rules:
-  - host: {{ .Values.global.publicDomainName }}
-    http:
-      paths:
-      - pathType: Prefix
-        path: "/"
-        backend:
-          service:
-            name: webgui
-            port:
-              number: 8000
-  - host: {{ .Values.global.publicDomainName }}
-    http:
-      paths:
-      - pathType: Prefix
-        path: "/api/v1"
-        backend:
-          service:
-            name: api
-            port:
-              number: 8000
+    - host: {{ .Values.global.publicDomainName }}
+      http:
+        paths:
+        - pathType: Prefix
+          path: "/pgadmin"
+          backend:
+            service:
+              name: pgadmin
+              port:
+                number: 5050
   tls:
     - hosts:
         - {{ .Values.global.publicDomainName }}
@@ -42,3 +38,4 @@ spec:
       {{ else }}
         ingress-cert
       {{ end }}
+{{ end }}

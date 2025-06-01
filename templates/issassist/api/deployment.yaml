@@ -78,6 +78,12 @@ spec:
                 secretKeyRef:
                   name: admin-auth
                   key: "password"
+            - name: IA_ADMIN_EMAIL
+              value: {{ .Values.global.adminAccount.email | quote }}
+            - name: IA_ADMIN_TZ
+              value: {{ .Values.global.adminAccount.timezone | quote }}
+            - name: IA_ADMIN_PASSWORD_IS_LOCKED
+              value: {{ .Values.global.adminAccount.lockPassword | quote }}
             - name: IA_JWT_SECRET_KEY
               valueFrom:
                 secretKeyRef:

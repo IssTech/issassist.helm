@@ -1,3 +1,4 @@
+{{ if .Values.pgAdmin.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -10,15 +11,46 @@ spec:
   template:
     metadata:
       labels:
-       app.kubernetes.io/name: pgadmin
+        app.kubernetes.io/name: pgadmin
+        external-egress: block
     spec:
       dnsPolicy: ClusterFirst
       restartPolicy: Always
+      securityContext:
+        runAsUser: 0
+        fsGroup: 0
+        runAsGroup: 0
+
+      initContainers:
+        - name: volume-mount-hack
+          image: busybox
+          command: [ "sh", "-c", "chown -R 5050:0 /var/lib/pgadmin" ]
+          volumeMounts:
+            - name: pgadmin
+              mountPath: "/var/lib/pgadmin"
 
       containers:
         - name: pgadmin
-          image: 'dpage/pgadmin4:8'
+          image: 'dpage/pgadmin4'
           imagePullPolicy: Always
+          command:
+            - "/bin/bash"
+          args:
+            - "-c"
+            - |
+              mkdir -p /var/lib/pgadmin/storage/ && \
+              if [ -z "$(ls -A /var/lib/pgadmin/storage/)" ]; then \
+                mkdir -p "/var/lib/pgadmin/storage/{{- template "pgAdminUserStorageDir" . }}" \
+              ; else \
+                if [ "$(ls -A /var/lib/pgadmin/storage/ | xargs echo -n)" != "{{- template "pgAdminUserStorageDir" . }}" ]; then \
+                  rm /var/lib/pgadmin/pgadmin4.db; \
+                  mv "/var/lib/pgadmin/storage/$(ls -A /var/lib/pgadmin/storage/ | xargs echo -n)" "/var/lib/pgadmin/storage/{{- template "pgAdminUserStorageDir" . }}" \
+                ; fi \
+              ; fi && \
+              cp /mnt/issassist-ca.crt "/var/lib/pgadmin/storage/{{- template "pgAdminUserStorageDir" . }}/issassist-ca.crt" && \
+              cp -R /mnt/api-postgres "/var/lib/pgadmin/storage/{{- template "pgAdminUserStorageDir" . }}/api" && \
+              cp -R /mnt/tsm-agent-postgres "/var/lib/pgadmin/storage/{{- template "pgAdminUserStorageDir" . }}/tsm-agent" && \
+              /entrypoint.sh
           ports:
             - containerPort: 5050
           envFrom:
@@ -30,20 +62,31 @@ spec:
                 secretKeyRef:
                   name: pgadmin-auth
                   key: "username"
+            - name: API_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: api-postgres-auth
+                  key: "password"
+            - name: TSM_AGENT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: tsm-agent-postgres-auth
+                  key: "password"
           volumeMounts:
             - name: pgadmin
               mountPath: "/var/lib/pgadmin"
-            # - name: pgadmin-cert
-            #   mountPath: "/certs/server.cert"
-            #   subPath: "tls.crt"
-            # - name: pgadmin-cert
-            #   mountPath: "/certs/server.key"
-            #   subPath: "tls.key"
             - name: pgadmin-auth
               mountPath: "/etc/pgadmin/auth"
-            # - name: issassist-ca-cert
-            #   mountPath: "/etc/pgadmin/ca.crt"
-            #   subPath: "tls.crt"
+            - name: pgadmin-servers-config
+              mountPath: "/mnt/servers.json"
+              subPath: "servers.json"
+            - name: issassist-ca-cert
+              mountPath: "/mnt/issassist-ca.crt"
+              subPath: "tls.crt"
+            - name: api-postgres-cert
+              mountPath: "/mnt/api-postgres"
+            - name: tsm-agent-postgres-cert
+              mountPath: "/mnt/tsm-agent-postgres"
       volumes:
         - name: pgadmin
           persistentVolumeClaim:
@@ -51,12 +94,25 @@ spec:
         - name: pgadmin-config
           configMap:
             name: pgadmin-config
-        - name: pgadmin-cert
-          secret:
-            secretName: pgadmin-cert
+        - name: pgadmin-servers-config
+          configMap:
+            name: pgadmin-servers-config
         - name: pgadmin-auth
           secret:
             secretName: pgadmin-auth
+        - name: api-postgres-cert
+          secret:
+            secretName: api-postgres-cert
+        - name: api-postgres-auth
+          secret:
+            secretName: api-postgres-auth
+        - name: tsm-agent-postgres-cert
+          secret:
+            secretName: tsm-agent-postgres-cert
+        - name: tsm-agent-postgres-auth
+          secret:
+            secretName: tsm-agent-postgres-auth
         - name: issassist-ca-cert
           secret:
             secretName: issassist-ca-cert
+{{ end }}

@@ -47,6 +47,6 @@ for secret in ret.items:
         private_key = b64decode(secret.data["tls.key"])
         Path(secret_name + ".crt").write_bytes(certificate)
         private_key_path = Path(secret_name + ".key")
-        private_key_path.chmod(0o600)
+        private_key_path.touch(mode=0o600, exist_ok=True)
         private_key_path.write_bytes(private_key)
 

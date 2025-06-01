@@ -15,6 +15,7 @@ spec:
         app.kubernetes.io/name: postgres
         app.kubernetes.io/part-of: api
         app.kubernetes.io/component: database
+        external-egress: block
     spec:
       dnsPolicy: ClusterFirst
       restartPolicy: Always
