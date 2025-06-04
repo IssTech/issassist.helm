@@ -47,7 +47,7 @@ global:
 
 api:
   enabled: true
-  image: 'ghcr.io/isstech/issassist-api:1.0.0-rc.1'
+  image: 'ghcr.io/isstech/issassist-api:1.0'
 
   mail:
     smtpHost: ""
@@ -69,12 +69,12 @@ api:
 webGUI:
   enabled: true
   replicas: 3
-  image: 'ghcr.io/isstech/issassist-webgui:1.0.0-rc.2'
+  image: 'ghcr.io/isstech/issassist-webgui:1.0'
 
 tsmAgent:
   enabled: true
   replicas: 3
-  image: 'ghcr.io/isstech/issassist-tsm-agent:latest'
+  image: 'ghcr.io/isstech/issassist-tsm-agent:1.0'
 
   tsmClientImage:
     buildSchedule: "0 0 * * 1"  # Every Monday, 00:00
