@@ -40,12 +40,12 @@ spec:
           livenessProbe:
             httpGet:
               port: 8000
-              path: /api/v1/info/
+              path: "{{ .Values.global.basePath }}/api/v1/info/"
             initialDelaySeconds: 30
             timeoutSeconds: 60
           env:
             - name: IA_ROOT_PATH
-              value: "/api"
+              value: "{{ .Values.global.basePath }}/api"
             - name: IA_FORWARDED_ALLOW_IPS
               value: "*"
             - name: IA_DATABASE_USERNAME

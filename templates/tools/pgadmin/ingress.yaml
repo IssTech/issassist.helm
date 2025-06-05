@@ -24,7 +24,7 @@ spec:
       http:
         paths:
         - pathType: Prefix
-          path: "/pgadmin"
+          path: "{{ .Values.global.basePath }}/pgadmin"
           backend:
             service:
               name: pgadmin

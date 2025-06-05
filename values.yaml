@@ -1,6 +1,10 @@
 global:
   publicDomainName: "localhost"
   publicPort: 443
+  # Base path of IssAssist.
+  # Should NOT end with "/".
+  # Examples: "", "/issassist", "/issassist/demo"
+  basePath: ""
 
   # The main administrative account
   adminAccount:

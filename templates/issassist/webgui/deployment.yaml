@@ -27,11 +27,18 @@ spec:
           env:
             - name: IA_API_URL
               value: '{{- template "apiUrl" . }}'
+            - name: IA_BASE_PATH
+              value: {{ .Values.global.basePath | quote }}
           volumeMounts:
             - name: messaging
               mountPath: "/config/tsm-agent-messaging.crt"
               subPath: "tls.crt"
+            - name: static-files
+              mountPath: "/usr/share/nginx/html"
       volumes:
+        - name: static-files
+          persistentVolumeClaim:
+            claimName: webgui-static-files
         - name: messaging
           secret:
             secretName: messaging-cert

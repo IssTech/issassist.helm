@@ -13,7 +13,7 @@ data:
   PGADMIN_CONFIG_SESSION_COOKIE_SECURE: "True"
   PGADMIN_CONFIG_SESSION_COOKIE_HTTPONLY: "False"
   PGADMIN_CONFIG_ENABLE_SERVER_PASS_EXEC_CMD: "True"
-  SCRIPT_NAME: "/pgadmin"
+  SCRIPT_NAME: "{{ .Values.global.basePath }}/pgadmin"
 ---
 apiVersion: v1
 kind: ConfigMap
