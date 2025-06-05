@@ -18,7 +18,11 @@ spec:
     http:
       paths:
       - pathType: Prefix
+        {{ if .Values.global.basePath }}
         path: "{{ .Values.global.basePath }}"
+        {{ else }}
+        path: "/"
+        {{ end }}
         backend:
           service:
             name: webgui
