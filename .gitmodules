@@ -1,3 +1,0 @@
-[submodule "charts/docker-registry"]
-	path = charts/docker-registry
-	url = https://github.com/IssTech/docker-registry.helm.git

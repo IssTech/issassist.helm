@@ -44,7 +44,7 @@ If you want to use another domain name than "issassist", you can change it in
 `global.publicDomainName="issassist"` below before executing the commands.
 
 ```shell
-git clone --recurse-submodules https://github.com/IssTech/issassist.helm
+git clone https://github.com/IssTech/issassist.helm
 helm upgrade -i issassist \
   --create-namespace --namespace issassist \
   --set global.publicDomainName="issassist" \
