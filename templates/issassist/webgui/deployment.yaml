@@ -33,12 +33,12 @@ spec:
             - name: messaging
               mountPath: "/config/tsm-agent-messaging.crt"
               subPath: "tls.crt"
-            - name: static-files
-              mountPath: "/usr/share/nginx/html"
+            #- name: static-files
+            #  mountPath: "/usr/share/nginx/html"
       volumes:
-        - name: static-files
-          persistentVolumeClaim:
-            claimName: webgui-static-files
+        #- name: static-files
+        #  persistentVolumeClaim:
+        #    claimName: webgui-static-files
         - name: messaging
           secret:
             secretName: messaging-cert
