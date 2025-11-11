@@ -1,6 +1,8 @@
 global:
+  # The public domain name of IssAssist.
   publicDomainName: "localhost"
-  publicPort: 443
+  # The port of the API that user's browsers/clients use to access the API.
+  publicApiPort: 443
   # Base path of IssAssist.
   # Should NOT end with "/".
   # Examples: "", "/issassist", "/issassist/demo"

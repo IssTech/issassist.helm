@@ -5,10 +5,10 @@
 {{- end }}
 
 {{- define "apiUrl" }}
-{{- if eq (.Values.global.publicPort | toString) "443" }}
+{{- if eq (.Values.global.publicApiPort | toString) "443" }}
 {{- print "https://" .Values.global.publicDomainName .Values.global.basePath "/api/v1/" }}
 {{- else }}
-{{- print "https://" .Values.global.publicDomainName ":" .Values.global.publicPort .Values.global.basePath "/api/v1/" }}
+{{- print "https://" .Values.global.publicDomainName ":" .Values.global.publicApiPort .Values.global.basePath "/api/v1/" }}
 {{- end }}
 {{- end }}
 
