@@ -3,7 +3,7 @@ global:
   publicDomainName: "localhost"
   # The port of the API that user's browsers/clients use to access the API.
   publicApiPort: 443
-  publicApiSchema: https
+  publicApiScheme: https
   # Base path of IssAssist.
   # Should NOT end with "/".
   # Examples: "", "/issassist", "/issassist/demo"

@@ -6,9 +6,9 @@
 
 {{- define "apiUrl" }}
 {{- if eq (.Values.global.publicApiPort | toString) "443" }}
-{{- print .Values.global.publicApiSchema "://" .Values.global.publicDomainName .Values.global.basePath "/api/v1/" }}
+{{- print .Values.global.publicApiScheme "://" .Values.global.publicDomainName .Values.global.basePath "/api/v1/" }}
 {{- else }}
-{{- print .Values.global.publicApiSchema "://" .Values.global.publicDomainName ":" .Values.global.publicApiPort .Values.global.basePath "/api/v1/" }}
+{{- print .Values.global.publicApiScheme "://" .Values.global.publicDomainName ":" .Values.global.publicApiPort .Values.global.basePath "/api/v1/" }}
 {{- end }}
 {{- end }}
 
