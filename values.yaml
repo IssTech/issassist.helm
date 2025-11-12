@@ -3,6 +3,7 @@ global:
   publicDomainName: "localhost"
   # The port of the API that user's browsers/clients use to access the API.
   publicApiPort: 443
+  publicApiSchema: https
   # Base path of IssAssist.
   # Should NOT end with "/".
   # Examples: "", "/issassist", "/issassist/demo"
@@ -55,6 +56,13 @@ api:
   enabled: true
   image: 'ghcr.io/isstech/issassist-api:1.1'
 
+  service:
+    # Can be "ClusterIP", "NodePort" or "LoadBalancer".
+    type: ClusterIP
+    port: 8000
+    # Define this if type="NodePort":
+    # nodePort: 30000
+
   mail:
     smtpHost: ""
     smtpPort: 25
@@ -77,10 +85,24 @@ webGUI:
   replicas: 3
   image: 'ghcr.io/isstech/issassist-webgui:1.1'
 
+  service:
+    # Can be "ClusterIP", "NodePort" or "LoadBalancer".
+    type: ClusterIP
+    port: 8000
+    # Define this if type="NodePort":
+    # nodePort: 30001
+
 tsmAgent:
   enabled: true
   replicas: 3
   image: 'ghcr.io/isstech/issassist-tsm-agent:1.1'
+
+  service:
+    # Can be "ClusterIP", "NodePort" or "LoadBalancer".
+    type: ClusterIP
+    port: 50051
+    # Define this if type="NodePort":
+    # nodePort: 30002
 
   tsmClientImage:
     buildSchedule: "0 0 * * 1"  # Every Monday, 00:00

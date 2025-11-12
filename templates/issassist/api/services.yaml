@@ -5,9 +5,12 @@ metadata:
   labels:
     app.kubernetes.io/name: api
 spec:
-  type: ClusterIP
+  type: {{ .Values.api.service.type }}
   ports:
-    - protocol: TCP
-      port: 8000
+    - port: {{ .Values.api.service.port }}
+      targetPort: 8000
+      protocol: TCP
+      name: http
+      nodePort: {{ .Values.api.service.nodePort }}
   selector:
     app.kubernetes.io/name: api

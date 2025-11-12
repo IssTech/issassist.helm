@@ -5,9 +5,12 @@ metadata:
   labels:
     app.kubernetes.io/name: tsm-agent
 spec:
-  type: ClusterIP
+  type: {{ .Values.tsmAgent.service.type }}
   ports:
-    - protocol: TCP
-      port: 50051
+    - port: {{ .Values.tsmAgent.service.port }}
+      targetPort: 50051
+      protocol: TCP
+      name: http
+      nodePort: {{ .Values.tsmAgent.service.nodePort }}
   selector:
     app.kubernetes.io/name: tsm-agent
