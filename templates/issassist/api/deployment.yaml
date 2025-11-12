@@ -119,6 +119,8 @@ spec:
                 secretKeyRef:
                   name: smtp-auth
                   key: "password"
+            - name: IA_CORS_ALLOWED_ORIGINS
+              value: '"{{- template "webGUIOrigin" . }}"'
           volumeMounts:
             - name: api-config
               mountPath: "/app/data/config.toml"
