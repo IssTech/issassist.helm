@@ -1,0 +1,10 @@
+Congratulations!
+
+If you see no errors or warnings, then IssAssist has been installed.
+It should take a minutes for everything to be ready.
+
+To log in, go to:{{ " " }}{{- template "webGUIOrigin" . }}/{{ .Values.global.basePath }}
+
+The username is "admin" and the password can be fetched by running:
+
+kubectl get secrets admin-auth -n {{ .Release.Namespace }} -o jsonpath='{.data.password}' | base64 -d
