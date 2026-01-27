@@ -55,7 +55,7 @@ global:
 
 api:
   enabled: true
-  image: 'ghcr.io/isstech/issassist-api:1.1'
+  image: 'ghcr.io/isstech/issassist-api:1.2'
 
   service:
     # Can be "ClusterIP", "NodePort" or "LoadBalancer".
@@ -84,7 +84,7 @@ api:
 webGUI:
   enabled: true
   replicas: 3
-  image: 'ghcr.io/isstech/issassist-webgui:1.1'
+  image: 'ghcr.io/isstech/issassist-webgui:1.2'
 
   service:
     # Can be "ClusterIP", "NodePort" or "LoadBalancer".
@@ -96,7 +96,7 @@ webGUI:
 tsmAgent:
   enabled: true
   replicas: 3
-  image: 'ghcr.io/isstech/issassist-tsm-agent:1.1'
+  image: 'ghcr.io/isstech/issassist-tsm-agent:1.2'
 
   service:
     # Can be "ClusterIP", "NodePort" or "LoadBalancer".
