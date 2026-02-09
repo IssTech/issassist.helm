@@ -11,6 +11,7 @@ spec:
   privateKey:
     algorithm: RSA
     size: 4096
+    rotationPolicy: Always
   issuerRef:
     name: root-issuer
     kind: ClusterIssuer

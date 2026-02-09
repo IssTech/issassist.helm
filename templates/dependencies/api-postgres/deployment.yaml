@@ -22,7 +22,7 @@ spec:
 
       containers:
         - name: api-postgres
-          image: 'postgres:17'
+          image: 'postgres:18'
           imagePullPolicy: Always
           command:
             - "/bin/bash"
