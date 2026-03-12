@@ -1,0 +1,18 @@
+{{- if .Values.superset.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: superset-postgres
+  labels:
+    app.kubernetes.io/name: postgres
+    app.kubernetes.io/part-of: superset
+spec:
+  type: NodePort
+  ports:
+    - protocol: TCP
+      port: 5432
+      nodePort: 30105
+  selector:
+    app.kubernetes.io/name: postgres
+    app.kubernetes.io/part-of: superset
+{{- end }}

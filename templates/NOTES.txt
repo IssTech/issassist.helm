@@ -4,6 +4,13 @@ If you see no errors or warnings, then IssAssist has been installed.
 It should take a minutes for everything to be ready.
 
 To log in, go to:{{ " " }}{{- template "webGUIOrigin" . }}{{ .Values.global.basePath }}
+{{- if .Values.superset.enabled }}
+Apache Superset:{{ " " }}{{- template "webGUIOrigin" . }}{{ .Values.global.basePath }}/superset
+{{- end }}
+{{- if .Values.pgAdmin.enabled }}
+PgAdmin:{{ " " }}{{- template "webGUIOrigin" . }}{{ .Values.global.basePath }}/pgadmin
+{{- end }}
+
 
 The username is "admin" and the password can be fetched by running:
 

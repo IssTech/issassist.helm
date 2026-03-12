@@ -38,6 +38,18 @@ spec:
             name: api
             port:
               number: 8000
+  {{- if .Values.superset.enabled }}
+  - host: {{ .Values.global.publicDomainName }}
+    http:
+      paths:
+      - pathType: Prefix
+        path: "{{ .Values.global.basePath }}/superset"
+        backend:
+          service:
+            name: superset
+            port:
+              name: http
+  {{- end }}
   tls:
     - hosts:
         - {{ .Values.global.publicDomainName }}

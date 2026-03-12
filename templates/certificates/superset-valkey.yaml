@@ -1,0 +1,29 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: superset-valkey-cert
+spec:
+  commonName: superset-valkey
+  secretName: superset-valkey-cert
+  duration: {{ .Values.global.certDuration }}
+  renewBefore: 72h
+  usages:
+    - client auth
+    - server auth
+    - key encipherment
+    - digital signature
+    - data encipherment
+  dnsNames:
+    - "superset-valkey"
+    - "localhost"
+  subject:
+    organizations:
+      - "IssTech AB"
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+    rotationPolicy: Always
+  issuerRef:
+    name: issassist-ca-issuer
+    kind: Issuer
+    group: cert-manager.io

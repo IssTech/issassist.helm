@@ -1,0 +1,62 @@
+{{- if .Values.superset.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: superset-valkey
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: valkey
+      app.kubernetes.io/part-of: superset
+      app.kubernetes.io/component: dictionary-server
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: valkey
+        app.kubernetes.io/part-of: superset
+        app.kubernetes.io/component: dictionary-server
+        external-egress: block
+    spec:
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+
+      containers:
+        - name: superset-valkey
+          image: 'valkey/valkey:9'
+          imagePullPolicy: Always
+          command:
+            - "/bin/bash"
+          args:
+            - "-c"
+            - |
+              [ -e /etc/valkey/auth/password ] && \
+              create-acl.sh && \
+              valkey-server
+          ports:
+            - containerPort: 6379
+          volumeMounts:
+            - name: superset-valkey
+              mountPath: "/data"
+            - name: valkey-config
+              mountPath: "/usr/local/bin/create-acl.sh"
+              subPath: "create-acl.sh"
+            - name: superset-env
+              mountPath: "/etc/valkey/auth"
+      volumes:
+        - name: superset-valkey
+          persistentVolumeClaim:
+            claimName: superset-valkey
+        - name: valkey-config
+          configMap:
+            name: valkey-config
+            defaultMode: 0755
+        - name: superset-env
+          secret:
+            secretName: superset-env
+            items:
+              - key: REDIS_USER
+                path: username
+              - key: REDIS_PASSWORD
+                path: password
+{{- end }}

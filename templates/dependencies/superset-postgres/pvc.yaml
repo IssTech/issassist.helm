@@ -1,0 +1,20 @@
+{{- if .Values.superset.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: superset-postgres
+  labels:
+    app.kubernetes.io/name: postgres
+    app.kubernetes.io/part-of: superset
+  annotations:
+    helm.sh/resource-policy: "keep"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.superset.postgres.volumeSize | quote }}
+  {{- if .Values.superset.postgres.storageClass }}
+  storageClassName: {{ .Values.superset.postgres.storageClass | quote }}
+  {{- end }}
+{{- end }}

@@ -1,0 +1,41 @@
+{{- if .Values.superset.enabled }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: superset-env
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ template "superset.fullname" . }}
+    chart: {{ template "superset.chart" . }}
+    release: "{{ .Release.Name }}"
+    heritage: "{{ .Release.Service }}"
+    {{- if .Values.superset.extraLabels }}
+      {{ toYaml .Values.superset.extraLabels | nindent 4 }}
+    {{- end }}
+  annotations:
+    secret-generator.v1.mittwald.de/autogenerate: "REDIS_PASSWORD,DB_PASS,SUPERSET_SECRET_KEY"
+    secret-generator.v1.mittwald.de/length: "32"
+    secret-generator.v1.mittwald.de/encoding: "hex"
+type: Opaque
+stringData:
+    REDIS_HOST: "superset-valkey"
+    REDIS_USER: "superset"
+    REDIS_PORT: "6379"
+    REDIS_PROTO: "redis"
+    REDIS_SSL_ENABLED: "false"
+    REDIS_DB: "1"
+    REDIS_CELERY_DB: "0"
+    DATABASE_DIALECT: "postgresql"
+    DB_USER: "superset"
+    DB_HOST: "superset-postgres"
+    DB_PORT: "5432"
+    DB_NAME: "superset"
+    ADMIN_EMAIL: {{ .Values.global.adminAccount.email | quote }}
+    ADMIN_FIRSTNAME: {{ .Values.superset.init.adminUser.firstname | quote }}
+    ADMIN_LASTNAME: {{ .Values.superset.init.adminUser.lastname | quote }}
+    {{- if .Values.superset.extraSecretEnv }}
+    {{- range $key, $value := .Values.superset.extraSecretEnv }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+    {{- end }}
+{{- end }}

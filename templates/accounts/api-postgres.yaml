@@ -8,3 +8,14 @@ metadata:
     secret-generator.v1.mittwald.de/encoding: "hex"
 stringData:
   username: "api"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: api-postgres-readonly-auth
+  annotations:
+    secret-generator.v1.mittwald.de/autogenerate: "password"
+    secret-generator.v1.mittwald.de/length: "32"
+    secret-generator.v1.mittwald.de/encoding: "hex"
+stringData:
+  username: "api-readonly"
