@@ -479,7 +479,7 @@ superset:
 
   image:
     repository: apache/superset
-    tag: dbf5e1f-dev
+    tag: d4f1f8d-dev
     pullPolicy: IfNotPresent
 
   imagePullSecrets: [ ]
@@ -835,8 +835,8 @@ superset:
       if [ -f "{{ .Values.extraConfigMountPath }}/tsm-agent-datasource.yaml" ]; then
         echo "Importing TSM Agent database connection.... "
         cp {{ .Values.extraConfigMountPath }}/tsm-agent-datasource.yaml /tmp/tsm-agent-datasource.yaml
-        sed -i -e "s/USERNAME/$(cat /etc/tsm-agent/auth/username)/g" /tmp/tsm-agent-datasource.yaml
-        sed -i -e "s/PASSWORD/$(cat /etc/tsm-agent/auth/password)/g" /tmp/tsm-agent-datasource.yaml
+        sed -i -e "s]USERNAME]$(cat /etc/tsm-agent/auth/username)]g" /tmp/tsm-agent-datasource.yaml
+        sed -i -e "s]PASSWORD]$(cat /etc/tsm-agent/auth/password)]g" /tmp/tsm-agent-datasource.yaml
         superset import_datasources -p /tmp/tsm-agent-datasource.yaml
       fi
     # -- Launch additional containers into init job pod
