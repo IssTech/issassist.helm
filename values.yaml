@@ -105,7 +105,7 @@ tsmAgent:
       crontab: "*/10 * * * *"  # Sync OCs every 10 minutes minute
     dedupStats:
       enabled: true
-      crontab: "20 0 * * *"  # Sync dedup stats every day at 20:00
+      crontab: "0 20 * * *"  # Sync dedup stats every day at 20:00
 
   service:
     # Can be "ClusterIP", "NodePort" or "LoadBalancer".
