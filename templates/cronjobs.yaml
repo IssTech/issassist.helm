@@ -1,0 +1,49 @@
+{{- if and .Values.tsmAgent.sync.operationsCenters .Values.tsmAgent.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: sync-all-operations-centers
+  labels:
+    app.kubernetes.io/name: tsm-agent
+spec:
+  schedule: {{ .Values.tsmAgent.sync.operationsCenters.crontab | quote }}
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: sync-all-operations-centers
+              image: {{ .Values.tsmAgent.image }}
+              imagePullPolicy: IfNotPresent
+              command:
+                - /bin/sh
+                - -c
+                - sync-client operations-centers --host=tsm-agent
+          restartPolicy: Never
+{{- end }}
+
+---
+
+{{- if and .Values.tsmAgent.sync.dedupStats .Values.tsmAgent.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: sync-all-dedup-stats
+  labels:
+    app.kubernetes.io/name: tsm-agent
+spec:
+  schedule: {{ .Values.tsmAgent.sync.dedupStats.crontab | quote }}
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: sync-all-dedup-stats
+              image: {{ .Values.tsmAgent.image }}
+              imagePullPolicy: IfNotPresent
+              command:
+                - /bin/sh
+                - -c
+                - sync-client dedup-stats --host=tsm-agent
+          restartPolicy: Never
+{{- end }}

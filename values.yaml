@@ -99,15 +99,20 @@ tsmAgent:
   replicas: 3
   image: 'ghcr.io/isstech/issassist-tsm-agent:1.3'
 
+  sync:
+    operationsCenters:
+      enabled: true
+      crontab: "*/10 * * * *"  # Sync OCs every 10 minutes minute
+    dedupStats:
+      enabled: true
+      crontab: "20 0 * * *"  # Sync dedup stats every day at 20:00
+
   service:
     # Can be "ClusterIP", "NodePort" or "LoadBalancer".
     type: ClusterIP
     port: 50051
     # Define this if type="NodePort":
     # nodePort: 30002
-
-  tsmClientImage:
-    buildSchedule: "0 0 * * 1"  # Every Monday, 00:00
 
   restoreTests:
     # Storage class for restore test volumes.
