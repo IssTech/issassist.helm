@@ -22,7 +22,7 @@ spec:
 
       containers:
         - name: tsm-agent-postgres
-          image: 'postgres:18'
+          image: {{ .Values.tsmAgent.postgres.image | quote }}
           imagePullPolicy: Always
           command:
             - "/bin/bash"

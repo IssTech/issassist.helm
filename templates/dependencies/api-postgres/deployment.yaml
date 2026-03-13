@@ -22,7 +22,7 @@ spec:
 
       containers:
         - name: api-postgres
-          image: 'postgres:18'
+          image: {{ .Values.api.postgres.image | quote }}
           imagePullPolicy: Always
           command:
             - "/bin/bash"

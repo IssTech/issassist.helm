@@ -74,6 +74,7 @@ api:
     fromName: ""
 
   postgres:
+    image: 'postgres:17'
     storageClass: ~
     volumeSize: "10Gi"
 
@@ -136,6 +137,7 @@ tsmAgent:
       extraDirectorySize: "4KiB"
 
   postgres:
+    image: 'postgres:17'
     storageClass: ~
     volumeSize: "20Gi"
 
