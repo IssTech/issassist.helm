@@ -31,6 +31,15 @@ global:
     # side-tools.
     lockPassword: false
 
+  mail:
+    smtpHost: ""
+    smtpPort: 25
+    smtpTLS: true
+    smtpUsername: ""
+    smtpPassword: ""
+    fromEmailAddress: ""
+    fromName: ""
+
   # Lifetimes of internal certificates
   certDuration: 8760h  # 1 year
   caCertDuration: 87600h  # 10 years
@@ -63,15 +72,6 @@ api:
     port: 8000
     # Define this if type="NodePort":
     # nodePort: 30000
-
-  mail:
-    smtpHost: ""
-    smtpPort: 25
-    smtpTLS: true
-    smtpUsername: ""
-    smtpPassword: ""
-    fromEmailAddress: ""
-    fromName: ""
 
   postgres:
     image: 'postgres:17'
@@ -438,6 +438,22 @@ superset:
       # APPLICATION_ROOT = ""
       # STATIC_ASSETS_PREFIX = ""
       ENABLE_PROXY_FIX = True
+    email: |
+      # smtp server configuration
+      SMTP_HOST = "{{ .Values.global.mail.smtpHost }}"
+      {{- if eq .Values.global.mail.smtpTLS true  }}
+      SMTP_SSL = True
+      {{- else }}
+      SMTP_SSL = False
+      {{- end }}
+      SMTP_USER = "{{ .Values.global.mail.smtpUsername }}"
+      SMTP_PORT = {{ .Values.global.mail.smtpPort }}
+      SMTP_PASSWORD = "{{ .Values.global.mail.smtpPassword }}"
+      SMTP_MAIL_FROM = "{{ .Values.global.mail.fromEmailAddress }}"
+      # If True creates a default SSL context with ssl.Purpose.CLIENT_AUTH using the
+      # default system root CA certificates.
+      SMTP_SSL_SERVER_AUTH = True
+      ENABLE_CHUNK_ENCODING = False
     theme: |
       APP_NAME = "IssAssist"
       

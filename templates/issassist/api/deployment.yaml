@@ -89,25 +89,25 @@ spec:
                 secretKeyRef:
                   name: api-jwt-secret-key
                   key: "jwt-secret-key"
-            {{if .Values.api.mail.smtpHost }}
+            {{if .Values.global.mail.smtpHost }}
             - name: IA_SMTP_HOST
-              value: {{ .Values.api.mail.smtpHost | quote }}
+              value: {{ .Values.global.mail.smtpHost | quote }}
             {{end}}
-            {{if .Values.api.mail.smtpPort }}
+            {{if .Values.global.mail.smtpPort }}
             - name: IA_SMTP_PORT
-              value: {{ .Values.api.mail.smtpPort | quote }}
+              value: {{ .Values.global.mail.smtpPort | quote }}
             {{end}}
-            {{if .Values.api.mail.smtpTLS }}
+            {{if .Values.global.mail.smtpTLS }}
             - name: IA_SMTP_TLS
-              value: {{ .Values.api.mail.smtpTLS | quote }}
+              value: {{ .Values.global.mail.smtpTLS | quote }}
             {{end}}
-            {{if .Values.api.mail.fromEmailAddress }}
+            {{if .Values.global.mail.fromEmailAddress }}
             - name: IA_MAIL_FROM_EMAIL_ADDRESS
-              value: {{ .Values.api.mail.fromEmailAddress | quote }}
+              value: {{ .Values.global.mail.fromEmailAddress | quote }}
             {{end}}
-            {{if .Values.api.mail.fromName }}
+            {{if .Values.global.mail.fromName }}
             - name: IA_MAIL_FROM_NAME
-              value: {{ .Values.api.mail.fromName | quote }}
+              value: {{ .Values.global.mail.fromName | quote }}
             {{end}}
             - name: IA_SMTP_USERNAME
               valueFrom:
