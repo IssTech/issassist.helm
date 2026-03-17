@@ -103,7 +103,7 @@ spec:
               value: {{ .Values.service.port | quote}}
             {{- range $key, $value := .Values.extraEnv }}
             - name: {{ $key | quote}}
-              value: {{ $value | quote }}
+              value: {{ tpl ($value) $ | quote }}
             {{- end }}
             {{- range $key, $value := .Values.supersetNode.env }}
             - name: {{ $key | quote}}
@@ -136,13 +136,13 @@ spec:
               containerPort: {{ .Values.service.port }}
               protocol: TCP
           {{- if .Values.supersetNode.startupProbe }}
-          startupProbe: {{- .Values.supersetNode.startupProbe | toYaml | nindent 12 }}
+          startupProbe: {{- tpl (.Values.supersetNode.startupProbe | toYaml) $ | nindent 12 }}
           {{- end }}
           {{- if .Values.supersetNode.readinessProbe }}
-          readinessProbe: {{- .Values.supersetNode.readinessProbe | toYaml | nindent 12 }}
+          readinessProbe: {{- tpl (.Values.supersetNode.readinessProbe | toYaml) $ | nindent 12 }}
           {{- end }}
           {{- if .Values.supersetNode.livenessProbe }}
-          livenessProbe: {{- .Values.supersetNode.livenessProbe | toYaml | nindent 12 }}
+          livenessProbe: {{- tpl (.Values.supersetNode.livenessProbe | toYaml) $ | nindent 12 }}
           {{- end }}
           resources:
             {{- if .Values.supersetNode.resources }}

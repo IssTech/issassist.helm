@@ -95,7 +95,7 @@ spec:
               value: {{ .Values.service.port | quote}}
             {{- range $key, $value := .Values.extraEnv }}
             - name: {{ $key | quote}}
-              value: {{ $value | quote }}
+              value: {{ tpl ($value) $ | quote }}
             {{- end }}
             {{- if .Values.extraEnvRaw }}
               {{- toYaml .Values.extraEnvRaw | nindent 12 }}

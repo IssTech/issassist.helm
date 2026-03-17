@@ -318,7 +318,7 @@ superset:
 
   # -- Extra environment variables that will be passed into pods
   extraEnv:
-    SUPERSET_APP_ROOT: "/superset"
+    SUPERSET_APP_ROOT: "{{ .Values.global.basePath }}/superset"
     # APPLICATION_ROOT: ""
     # STATIC_ASSETS_PREFIX: ""
     ENABLE_PROXY_FIX: "True"
@@ -434,10 +434,76 @@ superset:
   # Files can be passed as helm --set-file configOverrides.my-override=my-file.py
   configOverrides:
     superset_root: |
-      SUPERSET_APP_ROOT = "/superset"
+      SUPERSET_APP_ROOT = "{{ .Values.global.basePath }}/superset"
       # APPLICATION_ROOT = ""
       # STATIC_ASSETS_PREFIX = ""
       ENABLE_PROXY_FIX = True
+    theme: |
+      APP_NAME = "IssAssist"
+      
+      {{- if eq (.Values.global.publicPort | toString) "443" }}
+      APP_ICON = "{{ .Values.global.publicScheme }}://{{ .Values.global.publicDomainName }}{{ .Values.global.basePath }}/superset/static/assets/images/superset-logo-horiz.png"
+      {{- else }}
+      APP_ICON = "{{ .Values.global.publicScheme }}://{{ .Values.global.publicDomainName }}:{{ .Values.global.publicPort }}{{ .Values.global.basePath }}/superset/static/assets/images/superset-logo-horiz.png"
+      {{- end }}
+      
+      # Enable UI-based theme administration for admins
+      ENABLE_UI_THEME_ADMINISTRATION = True
+      
+      # Default theme configuration - foundation for all themes
+      # This acts as the base theme for all users
+      THEME_DEFAULT = {
+          "token": {
+              # Brand
+              # Application name for window titles
+              "brandAppName": APP_NAME,
+              "brandLogoAlt": "Apache Superset",
+              "brandLogoUrl": APP_ICON,
+              "brandLogoMargin": "18px 0",
+              "brandLogoHref": "/",
+              "brandLogoHeight": "24px",
+              # Spinner
+              "brandSpinnerUrl": None,
+              "brandSpinnerSvg": None,
+              # Default colors
+              "colorPrimary": "#2893B3",  # NOTE: previous lighter primary color was #20a7c9 # noqa: E501
+              "colorLink": "#2893B3",
+              "colorError": "#e04355",
+              "colorWarning": "#fcc700",
+              "colorSuccess": "#5ac189",
+              "colorInfo": "#66bcfe",
+              # Fonts
+              "fontUrls": [],
+              "fontFamily": "Inter, Helvetica, Arial, sans-serif",
+              "fontFamilyCode": "'IBM Plex Mono', 'Courier New', monospace",
+              # Extra tokens
+              "transitionTiming": 0.3,
+              "brandIconMaxWidth": 37,
+              "fontSizeXS": "8",
+              "fontSizeXXL": "28",
+              "fontWeightNormal": "400",
+              "fontWeightLight": "300",
+              "fontWeightStrong": "500",
+              "fontWeightBold": "700",
+              # Editor selection color (for SQL Lab text highlighting)
+              "colorEditorSelection": "#fff5cf",
+          },
+          "algorithm": "default",
+      }
+      
+      # Dark theme configuration - foundation for dark mode
+      # Inherits all tokens from THEME_DEFAULT and adds dark algorithm
+      # Set to None to disable dark mode
+      THEME_DARK = {
+          **THEME_DEFAULT,
+          "token": {
+              **THEME_DEFAULT["token"],
+              # Darker selection color for dark mode
+              "colorEditorSelection": "#5c4d1a",
+          },
+          "algorithm": "dark",
+      }
+
     # extend_timeout: |
     #    # Extend timeout to allow long-running queries.
     #    SUPERSET_WEBSERVER_TIMEOUT = ...
@@ -586,7 +652,7 @@ superset:
     podLabels: { }
     startupProbe:
       httpGet:
-        path: /superset/health
+        path: "{{ .Values.global.basePath }}/superset/health"
         port: http
       initialDelaySeconds: 15
       timeoutSeconds: 1
@@ -595,7 +661,7 @@ superset:
       successThreshold: 1
     livenessProbe:
       httpGet:
-        path: /superset/health
+        path: "{{ .Values.global.basePath }}/superset/health"
         port: http
       initialDelaySeconds: 15
       timeoutSeconds: 1
@@ -604,7 +670,7 @@ superset:
       successThreshold: 1
     readinessProbe:
       httpGet:
-        path: /superset/health
+        path: "{{ .Values.global.basePath }}/superset/health"
         port: http
       initialDelaySeconds: 15
       timeoutSeconds: 1

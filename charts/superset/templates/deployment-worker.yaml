@@ -101,7 +101,7 @@ spec:
               value: {{ .Values.service.port | quote}}
             {{- range $key, $value := .Values.extraEnv }}
             - name: {{ $key | quote}}
-              value: {{ $value | quote }}
+              value: {{ tpl ($value) $ | quote }}
             {{- end }}
             {{- if .Values.extraEnvRaw }}
             {{- toYaml .Values.extraEnvRaw | nindent 12 }}
@@ -126,13 +126,13 @@ spec:
               {{- tpl (toYaml .) $ | nindent 12 -}}
             {{- end }}
           {{- if .Values.supersetWorker.startupProbe }}
-          startupProbe: {{- .Values.supersetWorker.startupProbe | toYaml | nindent 12 }}
+          startupProbe: {{- tpl (.Values.supersetWorker.startupProbe | toYaml) $ | nindent 12 }}
           {{- end }}
           {{- if .Values.supersetWorker.readinessProbe }}
-          readinessProbe: {{- .Values.supersetWorker.readinessProbe | toYaml | nindent 12 }}
+          readinessProbe: {{- tpl (.Values.supersetWorker.readinessProbe | toYaml) $ | nindent 12 }}
           {{- end }}
           {{- if .Values.supersetWorker.livenessProbe }}
-          livenessProbe: {{- .Values.supersetWorker.livenessProbe | toYaml | nindent 12 }}
+          livenessProbe: {{- tpl (.Values.supersetWorker.livenessProbe | toYaml) $ | nindent 12 }}
           {{- end }}
           resources:
             {{- if .Values.supersetWorker.resources }}
