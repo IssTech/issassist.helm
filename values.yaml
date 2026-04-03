@@ -566,7 +566,7 @@ superset:
 
   image:
     repository: apache/superset
-    tag: d4f1f8d-dev
+    tag: 1aac6c9-dev
     pullPolicy: IfNotPresent
 
   imagePullSecrets: [ ]
