@@ -14,7 +14,7 @@ type: application
 # time you make changes to the chart and its templates,
 # including the app version.
 # Versions are expected to follow Semantic Versioning (https://semver.org/)
-version: 1.2.0
+version: 2.0.0
 
 # This is the version number of the application being deployed. This version
 # number should be incremented each time you make changes to the application.
@@ -25,5 +25,34 @@ appVersion: "1.3"
 
 dependencies:
   - name: superset
-    version: 0.15.2
+    version: "*"
     condition: superset.enabled
+  - name: kubernetes-secret-generator
+    version: "*"
+    alias: secret-generator
+  - name: postgres
+    version: "*"
+    alias: api-postgres
+    condition: api.enabled
+  - name: valkey
+    version: "*"
+    alias: api-valkey
+    condition: api.enabled
+  - name: postgres
+    version: "*"
+    alias: tsm-agent-postgres
+    condition: tsmAgent.enabled
+  - name: valkey
+    version: "*"
+    alias: tsm-agent-valkey
+    condition: tsmAgent.enabled
+  - name: postgres
+    version: "*"
+    alias: superset-postgres
+    condition: superset.enabled
+  - name: valkey
+    version: "*"
+    alias: superset-valkey
+    condition: superset.enabled
+  - name: common
+    version: "*"

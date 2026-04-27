@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: smtp-auth
+stringData:
+  username: {{ .Values.global.mail.smtpUsername | quote }}
+  password: {{ .Values.global.mail.smtpPassword | quote }}

@@ -1,4 +1,5 @@
-{{- if and .Values.tsmAgent.sync.operationsCenters .Values.tsmAgent.enabled }}
+{{- if .Values.tsmAgent.enabled }}
+{{- if .Values.tsmAgent.sync.operationsCenters.enabled }}
 apiVersion: batch/v1
 kind: CronJob
 metadata:
@@ -25,10 +26,10 @@ spec:
                 - sync-client operations-centers --host=tsm-agent
           restartPolicy: Never
 {{- end }}
-
+{{- end }}
 ---
-
-{{- if and .Values.tsmAgent.sync.dedupStats .Values.tsmAgent.enabled }}
+{{- if .Values.tsmAgent.enabled }}
+{{- if .Values.tsmAgent.sync.dedupStats.enabled }}
 apiVersion: batch/v1
 kind: CronJob
 metadata:
@@ -54,4 +55,5 @@ spec:
                 - -c
                 - sync-client dedup-stats --host=tsm-agent
           restartPolicy: Never
+{{- end }}
 {{- end }}

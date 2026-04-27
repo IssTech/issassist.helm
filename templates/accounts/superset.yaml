@@ -19,7 +19,7 @@ metadata:
 type: Opaque
 stringData:
     REDIS_HOST: "superset-valkey"
-    REDIS_USER: "superset"
+    REDIS_USER: "default"
     REDIS_PORT: "6379"
     REDIS_PROTO: "redis"
     REDIS_SSL_ENABLED: "false"

@@ -1,6 +1,6 @@
 # Root Issuer
 apiVersion: cert-manager.io/v1
-kind: ClusterIssuer
+kind: Issuer
 metadata:
   name: root-issuer
 spec:

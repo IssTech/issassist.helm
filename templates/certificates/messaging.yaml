@@ -14,5 +14,5 @@ spec:
     rotationPolicy: Always
   issuerRef:
     name: root-issuer
-    kind: ClusterIssuer
+    kind: Issuer
     group: cert-manager.io

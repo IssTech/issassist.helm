@@ -1,3 +1,4 @@
+{{ if .Values.api.enabled }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -104,7 +105,7 @@ data:
     # Set to True if you want to connect to the PostgreSQL database using TLS.
     # Default:
     # tls = false
-    tls = true
+    tls = false
 
     # A certificate belonging to a certificate authority (CA) which is recognized by
     # the PostgreSQL server and which verifies the database client certificate.
@@ -192,7 +193,7 @@ data:
     # Redis username.
     # Default:
     # username = "default"
-    username = "api"
+    username = "default"
 
     # Redis database number.
     # Default:
@@ -202,7 +203,7 @@ data:
     # Set to True if you want to connect to the Redis server using TLS.
     # Default:
     # tls = false
-    tls = true
+    tls = false
 
     # A certificate belonging to a certificate authority (CA) which is recognized by
     # the Redis server and which verifies the client certificate.
@@ -232,3 +233,4 @@ data:
     # Default:
     # lock_timeout = 120
     lock_timeout = 120
+{{ end }}

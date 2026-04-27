@@ -31,15 +31,12 @@ spec:
             - "-c"
             - |
               mkdir /app/data/cert
-              cp /mnt/certs/tls.key /app/data/cert/tsm-agent.key && \
-              cp /mnt/certs/tls.crt /app/data/cert/tsm-agent.crt && \
               cp /mnt/issassist-ca.crt /app/data/cert/issassist-ca.crt && \
               cp /mnt/messaging-certs/tls.key /app/data/messaging.key && \
               cp /mnt/messaging-certs/tls.crt /app/data/messaging.crt && \
               chown -R tsm_agent:tsm_agent /app/data/cert && \
               chown tsm_agent:tsm_agent /app/data/messaging.key && \
               chmod 755 -R /app/data/cert && \
-              chmod 600 /app/data/cert/tsm-agent.key && \
               chmod 600 /app/data/messaging.key && \
               export IA_K8S_AUTH_TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token) && \
               /entrypoint.sh
@@ -49,6 +46,11 @@ spec:
             initialDelaySeconds: 30
             timeoutSeconds: 60
           env:
+            - name: IA_DATABASE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: tsm-agent-postgres-auth
+                  key: "username"
             - name: IA_DATABASE_PASSWORD
               valueFrom:
                 secretKeyRef:
@@ -87,8 +89,6 @@ spec:
             - name: tsm-agent-config
               mountPath: "/app/data/config.toml"
               subPath: "config.toml"
-            - name: tsm-agent-cert
-              mountPath: "/mnt/certs"
             - name: issassist-ca-cert
               mountPath: "/mnt/issassist-ca.crt"
               subPath: "tls.crt"
@@ -98,9 +98,6 @@ spec:
         - name: tsm-agent-config
           configMap:
             name: tsm-agent-config
-        - name: tsm-agent-cert
-          secret:
-            secretName: tsm-agent-cert
         - name: issassist-ca-cert
           secret:
             secretName: issassist-ca-cert
