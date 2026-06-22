@@ -127,6 +127,10 @@ spec:
             - name: IA_ENABLED_MODULES
               value: {{ join "," $mods | quote }}
             {{- end }}
+            {{- if .Values.modules.kasten.enabled }}
+            - name: KASTEN_AUDIT_INTERVAL_MINUTES
+              value: {{ .Values.modules.kasten.auditIntervalMinutes | quote }}
+            {{- end }}
           volumeMounts:
             - name: api-config
               mountPath: "/app/data/config.toml"

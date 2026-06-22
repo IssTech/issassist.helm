@@ -169,6 +169,8 @@ modules:
   kasten:
     # Set to true to enable the Veeam Kasten backup integration.
     enabled: false
+    # How often (in minutes) the API scheduler collects Kasten statuses and alerts on failures.
+    auditIntervalMinutes: 60
 
 ##################
 ## Dependencies ##
