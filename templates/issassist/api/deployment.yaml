@@ -121,6 +121,12 @@ spec:
                   key: "password"
             - name: IA_CORS_ALLOWED_ORIGINS
               value: '"{{- template "webGUIOrigin" . }}"'
+            {{- $mods := list -}}
+            {{- if .Values.modules.kasten.enabled -}}{{- $mods = append $mods "kasten" -}}{{- end -}}
+            {{- if $mods }}
+            - name: IA_ENABLED_MODULES
+              value: {{ join "," $mods | quote }}
+            {{- end }}
           volumeMounts:
             - name: api-config
               mountPath: "/app/data/config.toml"
