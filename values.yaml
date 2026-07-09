@@ -275,6 +275,9 @@ kubernetes-secret-generator:
 
 superset:
   enabled: false
+  # externalUrl is independent of superset.enabled — set this to the public Superset URL
+  # so the WebGUI can render embedded dashboards even when the in-cluster Superset is disabled.
+  externalUrl: ""
 
   # -- Provide a name to override the name of the chart
   nameOverride: ~

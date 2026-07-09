@@ -29,6 +29,8 @@ spec:
               value: '{{- template "apiUrl" . }}'
             - name: IA_BASE_PATH
               value: {{ .Values.global.basePath | quote }}
+            - name: PUBLIC_SUPERSET_URL
+              value: {{ .Values.superset.externalUrl | quote }}
           volumeMounts:
             - name: messaging
               mountPath: "/config/tsm-agent-messaging.crt"
