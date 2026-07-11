@@ -276,6 +276,11 @@ kubernetes-secret-generator:
 superset:
   enabled: false
 
+  # -- Public URL for Superset, exposed to the webgui as PUBLIC_SUPERSET_URL.
+  # Independent of "enabled" -- an operator may point at an externally-hosted
+  # Superset instead of the bundled in-cluster one.
+  externalUrl: ""
+
   # -- Provide a name to override the name of the chart
   nameOverride: ~
   # -- Provide a name to override the full names of resources
