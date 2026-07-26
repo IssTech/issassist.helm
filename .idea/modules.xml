@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/issassist.helm.iml" filepath="$PROJECT_DIR$/.idea/issassist.helm.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/issassist-helm-scripts.iml" filepath="$PROJECT_DIR$/.idea/issassist-helm-scripts.iml" />
     </modules>
   </component>
 </project>
