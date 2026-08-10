@@ -858,7 +858,15 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: valkey-config
-  namespace: issassist
+  # Was hardcoded to `issassist`. Every other valkey resource in this chart —
+  # both deployments, both services, both PVCs — is namespace-less and therefore
+  # lands in the release namespace, so this ConfigMap was the only piece pinned
+  # elsewhere. Installing the chart into any namespace other than `issassist`
+  # put the valkey pods in one namespace and their config in another: the pods
+  # got no config, and a second install silently overwrote the first install's
+  # valkey-config. Found 2026-08-10 while preparing a staging install
+  # (IssAssist-Mission ISS000002).
+  namespace: {{ .Release.Namespace }}
   labels:
     app.kubernetes.io/name: valkey
     app.kubernetes.io/component: dictionary-server
