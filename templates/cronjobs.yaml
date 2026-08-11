@@ -15,6 +15,13 @@ spec:
     spec:
       template:
         spec:
+          # Required: the tsmAgent image lives in the private ghcr.io/isstech
+          # registry. Without this, the kubelet falls back to an anonymous pull
+          # and ghcr.io answers 401, so every scheduled run lands in
+          # ImagePullBackOff. The Deployments in this chart all carry the same
+          # block; these two CronJobs were the only pod specs missing it.
+          imagePullSecrets:
+            - name: isstech-repository-auth
           containers:
             - name: sync-all-operations-centers
               image: {{ .Values.tsmAgent.image }}
@@ -45,6 +52,13 @@ spec:
     spec:
       template:
         spec:
+          # Required: the tsmAgent image lives in the private ghcr.io/isstech
+          # registry. Without this, the kubelet falls back to an anonymous pull
+          # and ghcr.io answers 401, so every scheduled run lands in
+          # ImagePullBackOff. The Deployments in this chart all carry the same
+          # block; these two CronJobs were the only pod specs missing it.
+          imagePullSecrets:
+            - name: isstech-repository-auth
           containers:
             - name: sync-all-dedup-stats
               image: {{ .Values.tsmAgent.image }}
