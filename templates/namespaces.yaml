@@ -1,6 +1,8 @@
+{{- if .Values.clusterScoped.create }}
 apiVersion: v1
 kind: Namespace
 metadata:
   name: sp-restore-tests
   labels:
     app.kubernetes.io/name: issassist
+{{- end }}

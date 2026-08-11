@@ -159,6 +159,46 @@ pgAdmin:
     enabled: true
     annotations: { }
 
+# Cluster-scoped resources created by this chart.
+#
+# Set to false to install without ANY cluster-scoped object. This exists so the
+# chart can be installed into a shared cluster by a deployer that does not hold
+# cluster-admin.
+#
+# What `true` creates, and why it needs such broad rights:
+#   - Namespace   sp-restore-tests
+#   - ClusterRole sp-restore-tester    — `*` on pods, pods/exec, deployments,
+#                                        persistentvolumes and configmaps,
+#                                        CLUSTER-WIDE
+#   - RoleBinding manage-sp-restore-tests in sp-restore-tests, binding the
+#                                        tsm-agent ServiceAccount to it
+#
+# Kubernetes RBAC escalation-prevention means whoever installs the chart must
+# already hold those permissions, or hold the `escalate` verb. Either way an
+# installer needs cluster-wide secret and exec access — which is why
+# docs/issassist-ci-role.yaml grants the deployer cluster-admin, and why that
+# file says it is only acceptable on a dedicated cluster.
+#
+# TRADE-OFF, stated plainly: with this false, the IBM SP restore-test feature
+# does not work. tsm-agent has no rights in sp-restore-tests and the namespace
+# does not exist. Everything else installs normally. Turn it off for staging,
+# review copies, and any shared cluster; leave it on for a dedicated one.
+#
+# See also `kubernetes-secret-generator.rbac.clusterRole`, which independently
+# controls that subchart's own cluster-wide secrets ClusterRole. Set both false
+# together.
+#
+# NOT FULLY CLUSTER-SCOPE-FREE, and worth knowing before you plan RBAC: even
+# with both false, the chart still creates ONE cluster-scoped object — the
+# self-signed ClusterIssuer `root-issuer`, referenced by four Certificates. It
+# is deliberately not gated, because gating it breaks certificate issuance for
+# the whole release. An installer therefore still needs one narrow permission:
+# create/get/patch on `clusterissuers` in the cert-manager.io API group. That is
+# an auditable single rule — no cluster-wide secrets, no exec, nothing like
+# cluster-admin.
+clusterScoped:
+  create: true
+
 imageCredentials:
   registry: "ghcr.io"
   username: "your_github_username"
