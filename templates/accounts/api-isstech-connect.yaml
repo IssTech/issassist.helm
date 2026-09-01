@@ -1,0 +1,28 @@
+{{- if .Values.api.issTechConnect.url }}
+# Credentials for the connection to IssTech's dashboard.
+#
+# Only rendered when a dashboard URL is configured, so an installation that never
+# connects carries no Secret at all.
+#
+# Two values with very different lifetimes:
+#
+#   activation-code  Single-use, supplied by IssTech, spent on first enrolment.
+#                    Harmless afterwards — it cannot be redeemed twice.
+#
+#   secret-key       Generated here and NEVER rotated casually. It encrypts the
+#                    long-lived credential at rest in the database. Changing it
+#                    makes the stored credential undecryptable and forces
+#                    re-enrolment with a fresh activation code, which means a
+#                    round trip to IssTech.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: api-isstech-connect
+  annotations:
+    # Generated once and preserved across upgrades. Without this the key would be
+    # regenerated on every `helm upgrade`, silently orphaning the stored credential.
+    secret-generator.v1.mittwald.de/autogenerate: "secret-key"
+    secret-generator.v1.mittwald.de/length: "64"
+stringData:
+  activation-code: {{ .Values.api.issTechConnect.activationCode | quote }}
+{{- end }}
