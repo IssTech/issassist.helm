@@ -113,6 +113,11 @@ spec:
                 secretKeyRef:
                   name: api-jwt-secret-key
                   key: "jwt-secret-key"
+            - name: IA_AVEPOINT_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: api-avepoint-secret-key
+                  key: "avepoint-secret-key"
             {{if .Values.global.mail.smtpHost }}
             - name: IA_SMTP_HOST
               value: {{ .Values.global.mail.smtpHost | quote }}
