@@ -16,7 +16,7 @@ spec:
       dnsPolicy: ClusterFirst
       restartPolicy: Always
       imagePullSecrets:
-        - name: isstech-repository-auth
+        - name: {{ include "issassist.imagePullSecretName" . }}
 
       containers:
         - name: api

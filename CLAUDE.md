@@ -29,6 +29,21 @@ enabled today via issassist-api's own config/env vars, not via a Helm value. If 
 Helm-level enable/disable switch for them, follow the Kubernetes-first design rule in the
 root `CLAUDE.md` (values.yaml key → ConfigMap → env var, never a hardcoded URL).
 
+## Registry credentials
+
+`imageCredentials.existingSecret` names a docker-registry Secret you created yourself, and
+the chart references it instead of templating one. **Prefer it.**
+
+The alternative — `imageCredentials.username`/`password` — still works and is kept so
+existing installs keep working, but Helm stores user-supplied values in plaintext inside
+the release secret and keeps a copy per revision. Anyone who can read secrets in the
+namespace, or run `helm get values`, can read the token, and **no repository secret scanner
+ever sees it** because it is not in a repository. A live token was found sitting in
+staging's release values in 2026-09; that is why the option exists.
+
+The pull-secret name is resolved through `issassist.imagePullSecretName` in all six places
+that reference it, so the two paths cannot drift apart.
+
 ## Secrets
 cert-manager issues internal TLS (17 `Certificate` resources under `templates/certificates/`);
 kubernetes-secret-generator creates passwords (9 resources under `templates/accounts/`) —

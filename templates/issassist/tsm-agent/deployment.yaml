@@ -17,7 +17,7 @@ spec:
       restartPolicy: Always
       serviceAccountName: tsm-agent
       imagePullSecrets:
-        - name: isstech-repository-auth
+        - name: {{ include "issassist.imagePullSecretName" . }}
 
       containers:
         - name: tsm-agent

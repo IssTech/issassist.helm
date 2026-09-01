@@ -1,3 +1,24 @@
+{{/*
+Name of the image pull secret to reference.
+
+Two ways to supply registry credentials:
+
+  imageCredentials.existingSecret   a docker-registry Secret you created yourself.
+                                    Preferred — the credential never becomes a Helm
+                                    value, so it stays out of the release secret and
+                                    out of `helm get values`.
+
+  imageCredentials.username/password  templated into a Secret by this chart.
+                                    Works, but Helm stores user-supplied values in
+                                    plaintext in the release secret, where every
+                                    revision keeps a copy. A live token was found
+                                    sitting there in 2026-09; that is why the option
+                                    above exists.
+*/}}
+{{- define "issassist.imagePullSecretName" -}}
+{{- default "isstech-repository-auth" .Values.imageCredentials.existingSecret -}}
+{{- end }}
+
 {{- define "imagePullSecret" }}
 {{- with .Values.imageCredentials }}
 {{- printf "{\"auths\":{\"%s\":{\"username\":\"%s\",\"password\":\"%s\",\"auth\":\"%s\"}}}" .registry .username .password (printf "%s:%s" .username .password | b64enc) | b64enc }}

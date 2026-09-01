@@ -21,7 +21,7 @@ spec:
           # ImagePullBackOff. The Deployments in this chart all carry the same
           # block; these two CronJobs were the only pod specs missing it.
           imagePullSecrets:
-            - name: isstech-repository-auth
+            - name: {{ include "issassist.imagePullSecretName" . }}
           containers:
             - name: sync-all-operations-centers
               image: {{ .Values.tsmAgent.image }}
@@ -58,7 +58,7 @@ spec:
           # ImagePullBackOff. The Deployments in this chart all carry the same
           # block; these two CronJobs were the only pod specs missing it.
           imagePullSecrets:
-            - name: isstech-repository-auth
+            - name: {{ include "issassist.imagePullSecretName" . }}
           containers:
             - name: sync-all-dedup-stats
               image: {{ .Values.tsmAgent.image }}

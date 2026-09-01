@@ -201,6 +201,26 @@ clusterScoped:
 
 imageCredentials:
   registry: "ghcr.io"
+
+  # PREFERRED. Name of a docker-registry Secret you create yourself, e.g.
+  #
+  #   kubectl -n <namespace> create secret docker-registry ghcr-pull \
+  #     --docker-server=ghcr.io \
+  #     --docker-username=<github-username> \
+  #     --docker-password=<token with read:packages only>
+  #
+  # Set this and the chart references that Secret instead of templating its own,
+  # so the token never becomes a Helm value.
+  #
+  # This matters: Helm stores user-supplied values in plaintext inside the release
+  # secret, and keeps a copy for every revision. Anyone who can read secrets in the
+  # namespace, or run `helm get values`, can read the token — and no repository
+  # secret scanner ever sees it, because it is not in a repository.
+  existingSecret: ""
+
+  # DEPRECATED, kept so existing installs keep working. Used only when
+  # existingSecret is empty. Prefer the option above; a token here is stored in
+  # plaintext as described.
   username: "your_github_username"
   password: "your_pat_token"
 
