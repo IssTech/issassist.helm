@@ -82,6 +82,35 @@ api:
     storageClass: ~
     volumeSize: "1Gi"
 
+  # Connection to IssTech's dashboard.
+  #
+  # This does NOT install a dashboard. The dashboard runs at IssTech and is never
+  # deployed at a customer site. These settings only tell this installation how to
+  # reach ours.
+  #
+  # Traffic is one-way: IssAssist calls the dashboard, never the reverse. Nothing
+  # here opens an inbound path.
+  #
+  # Leave `url` empty and this installation never contacts IssTech at all — no
+  # scheduled job, no connection, no traffic. There is no separate on/off switch;
+  # configuring it is the opt-in.
+  issTechConnect:
+    # Base URL of the IssTech dashboard, e.g. https://dashboard.int.isstech.io
+    url: ""
+
+    # Single-use activation code supplied by IssTech. Exchanged once on first start
+    # for a long-lived credential, then spent — so it is harmless to leave here
+    # afterwards, and it cannot be redeemed twice.
+    #
+    # Held in a Secret rather than the ConfigMap, because it is a credential.
+    activationCode: ""
+
+    # Only needed behind a TLS-inspecting proxy, common on Dark Sites. Give the
+    # in-container path to the proxy's CA certificate and it will be trusted for
+    # this connection. Certificate verification is never disabled — this is the
+    # supported way to work behind such a proxy.
+    caCertPath: ""
+
 webGUI:
   enabled: true
   replicas: 3

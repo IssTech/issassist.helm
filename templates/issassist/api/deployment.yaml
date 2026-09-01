@@ -48,6 +48,30 @@ spec:
               value: "{{ .Values.global.basePath }}/api"
             - name: IA_FORWARDED_ALLOW_IPS
               value: "*"
+{{- if .Values.api.issTechConnect.url }}
+            # Connection to IssTech's dashboard. Absent entirely when no URL is
+            # configured, so the application never registers the reporting job.
+            - name: IA_DASHBOARD_URL
+              value: {{ .Values.api.issTechConnect.url | quote }}
+            - name: IA_DASHBOARD_ACTIVATION_CODE
+              valueFrom:
+                secretKeyRef:
+                  name: api-isstech-connect
+                  key: "activation-code"
+            # Encrypts the enrolment credential at rest. Generated once and kept
+            # across upgrades; rotating it forces re-enrolment.
+            - name: IA_DASHBOARD_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: api-isstech-connect
+                  key: "secret-key"
+{{- if .Values.api.issTechConnect.caCertPath }}
+            # Dark Site behind a TLS-inspecting proxy. Verification stays on; the
+            # proxy's CA is trusted instead.
+            - name: IA_DASHBOARD_CA_CERT_PATH
+              value: {{ .Values.api.issTechConnect.caCertPath | quote }}
+{{- end }}
+{{- end }}
             - name: IA_DATABASE_USERNAME
               valueFrom:
                 secretKeyRef:
