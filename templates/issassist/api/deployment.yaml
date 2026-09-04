@@ -118,6 +118,11 @@ spec:
                 secretKeyRef:
                   name: api-avepoint-secret-key
                   key: "avepoint-secret-key"
+            - name: IA_REPORTING_SALT
+              valueFrom:
+                secretKeyRef:
+                  name: api-reporting-salt
+                  key: "reporting-salt"
             {{if .Values.global.mail.smtpHost }}
             - name: IA_SMTP_HOST
               value: {{ .Values.global.mail.smtpHost | quote }}
