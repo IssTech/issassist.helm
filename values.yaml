@@ -228,6 +228,28 @@ pgAdmin:
 clusterScoped:
   create: true
 
+# IssProtect for DevOps (Veeam Kasten) — read-only connector.
+#
+# Creates a ServiceAccount, a non-expiring token Secret and a strictly read-only
+# ClusterRole, so IssAssist can be pointed at a cluster running Kasten K10. It is
+# cluster-scoped: leave it off where cluster-wide RBAC is not permitted, and
+# register the cluster with a token you issue yourself instead.
+#
+# Install it on *every* cluster you want monitored, including ones that do not run
+# IssAssist — see the comment at the top of templates/kasten/connector.yaml for the
+# `helm template ... | kubectl apply -f -` form.
+#
+# After installing, collect the three values the configuration page asks for:
+#
+#   kubectl -n <namespace> get secret issassist-kasten-connector-token \
+#     -o jsonpath='{.data.token}' | base64 -d
+#   kubectl -n <namespace> get secret issassist-kasten-connector-token \
+#     -o jsonpath='{.data.ca\.crt}' | base64 -d
+#   kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}'
+kastenConnector:
+  enabled: false
+  serviceAccountName: issassist-kasten-connector
+
 imageCredentials:
   registry: "ghcr.io"
 

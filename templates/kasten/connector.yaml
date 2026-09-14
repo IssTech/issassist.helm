@@ -1,0 +1,158 @@
+{{/*
+IssProtect for DevOps — read-only connector for a Kubernetes cluster running
+Veeam Kasten K10.
+
+What this is
+------------
+IssAssist monitors a Kasten installation by talking to that cluster's *Kubernetes
+API server*, not to K10's own endpoint: policies, backup actions and applications
+are all CRDs. Registering a cluster in IssAssist therefore needs three things —
+the API server URL, a bearer token, and the API server's CA certificate — which
+are exactly the four fields on Settings -> Configuration -> IssProtect for DevOps
+(the fourth being the display name).
+
+This template creates the identity behind that token: a ServiceAccount with a
+ClusterRole that can read what IssAssist needs and nothing else.
+
+Installed on every monitored cluster, not just this one
+------------------------------------------------------
+A customer may run IssAssist in one cluster and Kasten in several others. These
+objects are deliberately free of any dependency on the rest of the chart, so the
+same manifests can be applied to a cluster that has no IssAssist in it:
+
+    helm template issassist . \
+      --set kastenConnector.enabled=true \
+      -s templates/kasten/connector.yaml \
+      | kubectl --context <other-cluster> apply -f -
+
+Read-only, on purpose
+---------------------
+Every verb here is get/list/watch. The connector cannot create, patch or delete
+anything, cannot read Secrets, and cannot reach ConfigMaps. A monitoring
+credential that can start or cancel a backup is a monitoring credential that can
+destroy data by accident; IssAssist has no feature that needs write access to
+Kasten, so the token it holds must not carry any.
+
+About the long-lived token
+--------------------------
+The Secret below is a `kubernetes.io/service-account-token`, which the token
+controller fills with a token that does not expire. Short-lived TokenRequest
+tokens would be better, and cannot be used here: IssAssist stores the token in
+its database and presents it on a schedule, with nothing in the cluster to
+refresh it. The mitigation is the scope above — the worst a leaked token gives an
+attacker is a read-only view of namespace names, node sizes and backup metadata.
+Rotate it by deleting this Secret; the controller issues a new token, which then
+has to be pasted into IssAssist again.
+*/}}
+{{- if .Values.kastenConnector.enabled }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .Values.kastenConnector.serviceAccountName }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: kasten-connector
+    app.kubernetes.io/part-of: issassist
+    app.kubernetes.io/component: monitoring
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ .Values.kastenConnector.serviceAccountName }}-token
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: kasten-connector
+    app.kubernetes.io/part-of: issassist
+    app.kubernetes.io/component: monitoring
+  annotations:
+    kubernetes.io/service-account.name: {{ .Values.kastenConnector.serviceAccountName }}
+type: kubernetes.io/service-account-token
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ .Values.kastenConnector.serviceAccountName }}
+  labels:
+    app.kubernetes.io/name: kasten-connector
+    app.kubernetes.io/part-of: issassist
+    app.kubernetes.io/component: monitoring
+rules:
+  # Namespaces are what a Kasten policy selects, so the protected/unprotected
+  # split cannot be computed without them. Labels come with the list — a policy
+  # that selects on real labels rather than on the k10.kasten.io/appNamespace
+  # virtual key is resolved against them.
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["get", "list", "watch"]
+
+  # Nodes carry the licence count. Only workers are licensed, and the only way to
+  # tell a worker from a control-plane node is the node-role.kubernetes.io/*
+  # labels and the control-plane taints — both of which live on the node object.
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list", "watch"]
+
+  # Live CPU and memory for the utilisation graphs. Served by metrics-server; if
+  # it is not installed the graphs are empty and nothing else is affected.
+  - apiGroups: ["metrics.k8s.io"]
+    resources: ["nodes"]
+    verbs: ["get", "list"]
+
+  # Storage utilisation: requested capacity per claim, and the classes behind it.
+  # Metadata only — the connector never reads the contents of a volume.
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims", "persistentvolumes"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["storageclasses"]
+    verbs: ["get", "list"]
+
+  # Kasten's own objects. Split by API group rather than collapsed into a
+  # wildcard so that a new Kasten release cannot silently widen what this token
+  # can see.
+  - apiGroups: ["config.kio.kasten.io"]
+    resources: ["policies", "policypresets", "profiles"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["actions.kio.kasten.io"]
+    resources:
+      - "backupactions"
+      - "backupclusteractions"
+      - "restoreactions"
+      - "restoreclusteractions"
+      - "exportactions"
+      - "importactions"
+      - "runactions"
+      - "retireactions"
+      - "reportactions"
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps.kio.kasten.io"]
+    resources:
+      - "applications"
+      - "restorepoints"
+      - "clusterrestorepoints"
+      - "restorepointcontents"
+    verbs: ["get", "list"]
+  - apiGroups: ["reporting.kio.kasten.io"]
+    resources: ["reports"]
+    verbs: ["get", "list"]
+  - apiGroups: ["dist.kio.kasten.io"]
+    resources: ["clusters", "distributions"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ .Values.kastenConnector.serviceAccountName }}
+  labels:
+    app.kubernetes.io/name: kasten-connector
+    app.kubernetes.io/part-of: issassist
+    app.kubernetes.io/component: monitoring
+subjects:
+  - kind: ServiceAccount
+    name: {{ .Values.kastenConnector.serviceAccountName }}
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  kind: ClusterRole
+  name: {{ .Values.kastenConnector.serviceAccountName }}
+  apiGroup: rbac.authorization.k8s.io
+{{- end }}
