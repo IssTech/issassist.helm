@@ -45,10 +45,24 @@ Rotate it by deleting this Secret; the controller issues a new token, which then
 has to be pasted into IssAssist again.
 */}}
 {{- if .Values.kastenConnector.enabled }}
+{{/*
+  Defaulted here rather than relied on from values.yaml, because upgrades to a
+  running install are made with `--reuse-values` — which rebases on the *previous
+  release's* user-supplied values and does not pick up a default newly added to
+  the chart. A key introduced in this commit is therefore empty on the first
+  upgrade that enables it, and the objects below render with no name:
+
+      Error: UPGRADE FAILED: could not get information about the resource
+      ServiceAccount "" in namespace ...
+
+  Hit on the first staging upgrade. `default` makes the template correct whether
+  the value reaches it or not.
+*/}}
+{{- $name := .Values.kastenConnector.serviceAccountName | default "issassist-kasten-connector" }}
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: {{ .Values.kastenConnector.serviceAccountName }}
+  name: {{ $name }}
   namespace: {{ .Release.Namespace }}
   labels:
     app.kubernetes.io/name: kasten-connector
@@ -58,20 +72,20 @@ metadata:
 apiVersion: v1
 kind: Secret
 metadata:
-  name: {{ .Values.kastenConnector.serviceAccountName }}-token
+  name: {{ $name }}-token
   namespace: {{ .Release.Namespace }}
   labels:
     app.kubernetes.io/name: kasten-connector
     app.kubernetes.io/part-of: issassist
     app.kubernetes.io/component: monitoring
   annotations:
-    kubernetes.io/service-account.name: {{ .Values.kastenConnector.serviceAccountName }}
+    kubernetes.io/service-account.name: {{ $name }}
 type: kubernetes.io/service-account-token
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: {{ .Values.kastenConnector.serviceAccountName }}
+  name: {{ $name }}
   labels:
     app.kubernetes.io/name: kasten-connector
     app.kubernetes.io/part-of: issassist
@@ -142,17 +156,17 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: {{ .Values.kastenConnector.serviceAccountName }}
+  name: {{ $name }}
   labels:
     app.kubernetes.io/name: kasten-connector
     app.kubernetes.io/part-of: issassist
     app.kubernetes.io/component: monitoring
 subjects:
   - kind: ServiceAccount
-    name: {{ .Values.kastenConnector.serviceAccountName }}
+    name: {{ $name }}
     namespace: {{ .Release.Namespace }}
 roleRef:
   kind: ClusterRole
-  name: {{ .Values.kastenConnector.serviceAccountName }}
+  name: {{ $name }}
   apiGroup: rbac.authorization.k8s.io
 {{- end }}
