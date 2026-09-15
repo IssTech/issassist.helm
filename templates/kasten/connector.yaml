@@ -44,7 +44,25 @@ attacker is a read-only view of namespace names, node sizes and backup metadata.
 Rotate it by deleting this Secret; the controller issues a new token, which then
 has to be pasted into IssAssist again.
 */}}
-{{- if .Values.kastenConnector.enabled }}
+{{/*
+  `.Values.kastenConnector` is read through `default dict` because it can be
+  absent entirely, not merely unset.
+
+  `--reuse-values` rebases on the last *deployed* release — and a release left in
+  `failed` state is skipped. Staging's revision 47 failed on an unrelated
+  pre-existing Issuer, so the next `--reuse-values` upgrade reached back to
+  revision 46, four days older, where this key had never existed. Go templates do
+  not short-circuit, so `.Values.kastenConnector.enabled` panics on the nil rather
+  than reading as false:
+
+      Error: UPGRADE FAILED: nil pointer evaluating interface {}.enabled
+
+  and that takes down the whole upgrade, not just this template. Reading the map
+  defensively means a values file that has never heard of this feature renders it
+  as off, which is what "default false" is supposed to mean.
+*/}}
+{{- $kastenConnector := .Values.kastenConnector | default dict }}
+{{- if $kastenConnector.enabled }}
 {{/*
   Defaulted here rather than relied on from values.yaml, because upgrades to a
   running install are made with `--reuse-values` — which rebases on the *previous
@@ -58,7 +76,7 @@ has to be pasted into IssAssist again.
   Hit on the first staging upgrade. `default` makes the template correct whether
   the value reaches it or not.
 */}}
-{{- $name := .Values.kastenConnector.serviceAccountName | default "issassist-kasten-connector" }}
+{{- $name := $kastenConnector.serviceAccountName | default "issassist-kasten-connector" }}
 apiVersion: v1
 kind: ServiceAccount
 metadata:
