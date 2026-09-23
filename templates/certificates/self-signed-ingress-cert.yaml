@@ -23,12 +23,16 @@ spec:
     name: root-issuer
     kind: ClusterIssuer
     group: cert-manager.io
----
-# Self-signed ingress certificate issuer
-apiVersion: cert-manager.io/v1
-kind: Issuer
-metadata:
-  name: self-signed-ingress-issuer
-spec:
-  ca:
-    secretName: self-signed-ingress-cert
+# There is deliberately no Issuer for this certificate.
+#
+# One existed — a `ca` Issuer pointing at `self-signed-ingress-cert` — and it
+# could never become ready: that secret holds the ingress's own server
+# certificate (`usages: server auth`, no `isCA`), and cert-manager refuses a CA
+# issuer whose certificate is not a CA:
+#
+#     Error getting keypair for CA issuer: certificate is not a CA
+#
+# Nothing ever issued from it; the ingress references the secret directly. Its
+# only effect was a permanently NotReady resource in every install, which fails
+# `helm upgrade --wait` and hides real failures among the noise. An internal CA
+# to issue from already exists: `issassist-ca-issuer` (templates/certificates/issassist-ca.yaml).
