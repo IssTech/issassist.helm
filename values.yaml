@@ -129,12 +129,21 @@ tsmAgent:
   image: 'ghcr.io/isstech/issassist-tsm-agent:1.3'
 
   sync:
+    # These two syncs are jobs inside IssAssist now, scheduled under
+    # Settings -> Configuration -> IBM Storage Protect -> Scheduled work, where
+    # an operator can move them without a release. They show up under Processes
+    # with what they did, like every other job.
+    #
+    # The CronJobs below are the old way of running them and stay switched off.
+    # Turn `useCronJobs` on only to go back to them — and then switch the two
+    # jobs off in the app, or the estate is synced twice.
+    useCronJobs: false
     operationsCenters:
       enabled: true
-      crontab: "*/10 * * * *"  # Sync OCs every 10 minutes minute
+      crontab: "*/10 * * * *"  # Only used when useCronJobs is true.
     dedupStats:
       enabled: true
-      crontab: "0 20 * * *"  # Sync dedup stats every day at 20:00
+      crontab: "0 20 * * *"  # Only used when useCronJobs is true.
 
   service:
     # Can be "ClusterIP", "NodePort" or "LoadBalancer".

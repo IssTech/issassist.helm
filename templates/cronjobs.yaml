@@ -1,4 +1,14 @@
-{{- if and .Values.tsmAgent.sync.operationsCenters .Values.tsmAgent.enabled }}
+{{/*
+  The two syncs these CronJobs run are jobs inside IssAssist now, scheduled from
+  its own settings. Rendered only when `tsmAgent.sync.useCronJobs` is true, which
+  it is not by default — an upgrade that left them on would sync every estate
+  twice, once on the chart's crontab and once on the operator's schedule.
+
+  Gated on the new key rather than on the existing `enabled` flags on purpose:
+  `helm upgrade --reuse-values` carries an installation's old values forward, and
+  those say enabled: true. A key that did not exist before cannot.
+*/}}
+{{- if and .Values.tsmAgent.sync.useCronJobs .Values.tsmAgent.sync.operationsCenters .Values.tsmAgent.enabled }}
 apiVersion: batch/v1
 kind: CronJob
 metadata:
@@ -35,7 +45,7 @@ spec:
 
 ---
 
-{{- if and .Values.tsmAgent.sync.dedupStats .Values.tsmAgent.enabled }}
+{{- if and .Values.tsmAgent.sync.useCronJobs .Values.tsmAgent.sync.dedupStats .Values.tsmAgent.enabled }}
 apiVersion: batch/v1
 kind: CronJob
 metadata:
