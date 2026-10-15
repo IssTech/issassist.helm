@@ -1,0 +1,42 @@
+{{/*
+How IssAssist's API and TSM agent log, from `logging.*` in values.yaml.
+
+values.yaml -> this ConfigMap -> `envFrom` on both Deployments -> each
+service's logging setup (`tsm_agent.logs.formatting`). Both Deployments carry
+a checksum of this ConfigMap, so changing a value restarts them: an env var
+read at start is not picked up by a pod that is already running.
+
+`.Values.logging` is read through `default dict` for the reason given in
+templates/kasten/connector.yaml: `--reuse-values` rebases on the previous
+release's values, where this key did not exist yet.
+*/}}
+{{- if or .Values.api.enabled .Values.tsmAgent.enabled }}
+{{- $logging := .Values.logging | default dict }}
+{{- $level := $logging.level | default "INFO" | upper }}
+{{- if not (has $level (list "DEBUG" "INFO" "WARNING" "ERROR")) }}
+{{- fail (printf "logging.level must be DEBUG, INFO, WARNING or ERROR, not %q" $level) }}
+{{- end }}
+{{- $format := $logging.format | default "text" | lower }}
+{{- if not (has $format (list "text" "json")) }}
+{{- fail (printf "logging.format must be text or json, not %q" $format) }}
+{{- end }}
+{{- /* Not `default 30`: that turns an explicit 0 into 30 instead of refusing it. */}}
+{{- $keepDays := 30 }}
+{{- if hasKey $logging "keepDays" }}{{ $keepDays = $logging.keepDays | int }}{{ end }}
+{{- if or (lt $keepDays 1) (gt $keepDays 365) }}
+{{- fail (printf "logging.keepDays must be between 1 and 365, not %d" $keepDays) }}
+{{- end }}
+{{- $storeFrom := $logging.storeFrom | default "INFO" | upper }}
+{{- if not (has $storeFrom (list "INFO" "WARNING" "ERROR")) }}
+{{- fail (printf "logging.storeFrom must be INFO, WARNING or ERROR, not %q" $storeFrom) }}
+{{- end }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: issassist-logging
+data:
+  IA_LOG_LEVEL: {{ $level | quote }}
+  IA_LOG_FORMAT: {{ $format | quote }}
+  IA_LOG_KEEP_DAYS: {{ $keepDays | quote }}
+  IA_LOG_STORE_FROM: {{ $storeFrom | quote }}
+{{- end }}

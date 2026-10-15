@@ -62,6 +62,20 @@ global:
       # Issuer or ClusterIssuer name.
       issuer: ""
 
+# How the API and the TSM agent log. Applied to both, through the
+# issassist-logging ConfigMap; changing a value restarts their pods.
+logging:
+  # Lowest level written to the pods' output: DEBUG, INFO, WARNING or ERROR.
+  # Support may ask for DEBUG; it is never stored in the database.
+  level: INFO
+  # "text" (the usual line) or "json" (one object per line, for Loki,
+  # Elastic, Splunk and the like). Pod output only; the Logs page is the same.
+  format: text
+  # Days a line is kept for the Logs page and the support download (1-365).
+  keepDays: 30
+  # Lowest level kept in the database: INFO, WARNING or ERROR.
+  storeFrom: INFO
+
 api:
   enabled: true
   image: 'ghcr.io/isstech/issassist-api:1.3'

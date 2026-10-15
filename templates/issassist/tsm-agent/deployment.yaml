@@ -10,6 +10,9 @@ spec:
       app.kubernetes.io/name: tsm-agent
   template:
     metadata:
+      annotations:
+        # Restart on a change to logging.*: env is read once, at start.
+        checksum/logging: {{ include (print $.Template.BasePath "/issassist/logging-configmap.yaml") . | sha256sum }}
       labels:
        app.kubernetes.io/name: tsm-agent
     spec:
@@ -48,7 +51,21 @@ spec:
               port: 50051
             initialDelaySeconds: 30
             timeoutSeconds: 60
+          envFrom:
+            # IA_LOG_LEVEL, IA_LOG_FORMAT, IA_LOG_KEEP_DAYS, IA_LOG_STORE_FROM
+            - configMapRef:
+                name: issassist-logging
           env:
+            # Every log line names the pod and node it came from: replicas run
+            # on different nodes, and a network fault is often only one of them.
+            - name: IA_POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: IA_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
             - name: IA_DATABASE_PASSWORD
               valueFrom:
                 secretKeyRef:
