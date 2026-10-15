@@ -10,6 +10,9 @@ spec:
       app.kubernetes.io/name: api
   template:
     metadata:
+      annotations:
+        # Restart on a change to logging.*: env is read once, at start.
+        checksum/logging: {{ include (print $.Template.BasePath "/issassist/logging-configmap.yaml") . | sha256sum }}
       labels:
        app.kubernetes.io/name: api
     spec:
@@ -37,13 +40,39 @@ spec:
               chmod 755 -R /app/data/cert && \
               chmod 600 /app/data/cert/api.key && \
               /entrypoint.sh
+          # The first start runs every database migration, which can take
+          # minutes. Without a startup probe the liveness probe killed the API
+          # mid-migration after 30 s, and each restart began again and threw
+          # away the only log of why. Liveness only starts once this succeeds:
+          # up to 10 minutes (60 x 10 s).
+          startupProbe:
+            httpGet:
+              port: 8000
+              path: "{{ .Values.global.basePath }}/api/v1/info/"
+            periodSeconds: 10
+            failureThreshold: 60
+            timeoutSeconds: 10
           livenessProbe:
             httpGet:
               port: 8000
               path: "{{ .Values.global.basePath }}/api/v1/info/"
             initialDelaySeconds: 30
             timeoutSeconds: 60
+          envFrom:
+            # IA_LOG_LEVEL, IA_LOG_FORMAT, IA_LOG_KEEP_DAYS, IA_LOG_STORE_FROM
+            - configMapRef:
+                name: issassist-logging
           env:
+            # Every log line names the pod and node it came from: replicas run
+            # on different nodes, and a network fault is often only one of them.
+            - name: IA_POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: IA_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
             - name: IA_ROOT_PATH
               value: "{{ .Values.global.basePath }}/api"
             - name: IA_FORWARDED_ALLOW_IPS
