@@ -81,7 +81,11 @@ spec:
             # switch under Reporting decides whether they are; this only removes the
             # possibility.
             - name: IA_SUPPORT_SEND
-              value: {{ ternary "true" "false" (ne ((.Values.support | default dict).send | toString) "false") | quote }}
+              # Fails closed: only `true` (or leaving the key out, for an upgrade
+              # from a chart without it) renders "true". "False", "off" or a typo
+              # renders "false".
+              {{- $send := (.Values.support | default dict).send }}
+              value: {{ ternary "true" "false" (or (kindIs "invalid" $send) (eq ($send | toString) "true")) | quote }}
 {{- if .Values.api.issTechConnect.url }}
             # Connection to IssTech's dashboard. Absent entirely when no URL is
             # configured, so the application never registers the reporting job.
