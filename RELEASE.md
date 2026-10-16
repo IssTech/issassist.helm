@@ -12,6 +12,29 @@ in `docs/projects/<date>-<slug>.md`, linked from the entry.
 
 ## Next chart release — in development
 
+### `support.send`: whether this installation may send logs to IssTech support
+
+**What it is.** The site's own say over the new *Send logs to IssTech support* on the Logs
+page.
+
+**Where it is.** `values.yaml`:
+
+```yaml
+support:
+  send: true   # false: never, and the Reporting switch is hidden
+```
+
+Rendered as `IA_SUPPORT_SEND` on the API.
+
+**What changed for them.**
+- **Nothing is sent by default** even with `send: true`: an administrator must also switch
+  it on under Settings → Configuration → Reporting.
+- **Dark Sites set `support.send: false`.** Download .zip is unaffected.
+- Sending uses `api.issTechConnect` (the dashboard connection), and the installation must
+  also reach **`s3.sto1.safedc.net:443`**.
+
+**Where the detail is.** [`docs/projects/2026-10-16-support-send.md`](docs/projects/2026-10-16-support-send.md)
+
 ### `logging.*`: how the API and the TSM agent log
 
 **What it is.** One place to set how IssAssist's services log, and how long the Logs page

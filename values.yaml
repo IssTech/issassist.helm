@@ -76,6 +76,14 @@ logging:
   # Lowest level kept in the database: INFO, WARNING or ERROR.
   storeFrom: INFO
 
+# Sending logs to IssTech support from the Logs page (mission #244).
+support:
+  # false: this installation can never send logs to IssTech, and the switch
+  # under Settings → Configuration → Reporting is hidden. For Dark Sites.
+  # true: an administrator may switch it on there; it is off until they do.
+  # Download .zip works either way. Sending also needs api.issTechConnect.
+  send: true
+
 api:
   enabled: true
   image: 'ghcr.io/isstech/issassist-api:1.3'
