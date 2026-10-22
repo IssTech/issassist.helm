@@ -12,6 +12,28 @@ in `docs/projects/<date>-<slug>.md`, linked from the entry.
 
 ## Next chart release — in development
 
+### `tsmAgent.tapeSync.concurrency`: how many servers the tape sync asks at once
+
+**What it is.** A cap on how many Storage Protect servers the tape sync asks at the same
+time. Every question goes through the one Operations Center, so on a large estate this is
+what keeps the sync from opening dozens of command sessions on it at once.
+
+**Where it is.** `values.yaml`:
+
+```yaml
+tsmAgent:
+  tapeSync:
+    concurrency: 4   # 1 to 32
+```
+
+Rendered as `IA_TAPE_SYNC_CONCURRENCY` on the tsm-agent.
+
+**What changed for them.** New. The default, 4, is also what the agent uses when the key is
+absent, so an upgrade with `--reuse-values` (which keeps the old values, without this key)
+behaves the same. A value outside 1 to 32 falls back to 4 and the agent logs a warning.
+
+**Where the detail is.** `issassist-tsm-agent/docs/projects/2026-10-22-tape-v1-2-part2.md`.
+
 ### `support.send`: whether this installation may send logs to IssTech support
 
 **What it is.** The site's own say over the new *Send logs to IssTech support* on the Logs
