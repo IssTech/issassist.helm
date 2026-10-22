@@ -76,6 +76,13 @@ spec:
                 secretKeyRef:
                   name: tsm-agent-valkey-auth
                   key: "password"
+            {{- /* `default dict`: an upgrade with --reuse-values keeps the old
+                   values, which have no tapeSync key, and must still render. */}}
+            {{- $tapeSync := .Values.tsmAgent.tapeSync | default dict }}
+            {{- if $tapeSync.concurrency }}
+            - name: IA_TAPE_SYNC_CONCURRENCY
+              value: {{ $tapeSync.concurrency | quote }}
+            {{- end }}
             {{- if .Values.tsmAgent.restoreTests.storageClass }}
             - name: IA_K8S_RESTORE_TEST_STORAGE_CLASS_NAME
               value: {{ .Values.tsmAgent.restoreTests.storageClass }}
