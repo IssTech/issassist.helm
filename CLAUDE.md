@@ -2,6 +2,24 @@
 Helm 3 chart (`Chart.yaml` `apiVersion: v2`, `version: 1.2.0`) that deploys the whole
 stack. Style: [`../CLAUDE.md`](../CLAUDE.md) (Helm section).
 
+## Branches and releases (agreed 2026/10/23)
+
+Restated here because the root [`../CLAUDE.md`](../CLAUDE.md) is not under version control.
+
+- **All work is an issue** in `IssTech/isstech-issues`, on the IssAssist GitHub Project.
+  Start it with `/project-start <issue>` (alias `/start-project`), finish it with
+  `/project-close` (alias `/close-project`).
+- **Branch `<type>/<issue>-<slug>-<YYYYMMDD>`**, type `bug`, `fix` or `rfe` — e.g.
+  `rfe/244-send-logs-to-support-20261023`. Cut from `origin/review`, same name in every
+  repo the issue touches, and finished through a **PR into `review`**.
+- **Release:** `/release-cut X.Y.Z` cuts `review-X.Y.Z` from `review`. A **human** merges
+  `review-X.Y.Z` → `master`; no agent and no Claude session merges to `master`.
+- **Rulesets (2026/10/24):** `review` and `review-*` cannot be deleted or force-pushed;
+  `master` accepts changes only through a PR.
+- **Hotfix:** cut from the latest `review`, not from `master`. `/project-start` lists the
+  migrations, API and dependency changes in `master..review` and stops for a human to decide.
+- **New features ship dark** behind a `values.yaml` flag — see *Release flow* below.
+
 ## This chart IS the product
 The chart pins the 3 product image tags in `values.yaml`: `api.image` (issassist-api),
 `webGUI.image` (issassist-webgui), `tsmAgent.image` (issassist-tsm-agent) — currently all
@@ -76,8 +94,25 @@ Tier-2 test values file today despite the root CLAUDE.md's Tier-2 testing conven
 you add one, keep it working at all times; a change that breaks it should block the
 release once this path exists.
 
-## Release flow
-1. Feature branches tested and merged in the relevant repos.
-2. Bump image tags in `values.yaml`.
-3. Bump `Chart.yaml` version and tag the chart.
-4. Publish chart + offline bundle (for air-gapped Dark Site customers).
+## Release flow (agreed 2026/10/23)
+**The chart version is the IssAssist product version** — the bundle. Each component keeps
+its own version and is pinned **exactly** in `values.yaml` (`issassist-api:1.5.1-203`, never
+`:1.3`), so one chart always means the same images. A release that changed only the api is
+a new bundle with the other components left where they were.
+
+- **Patch** (1.5.0 → 1.5.1) when every issue since the last tag is a `fix` or `bug`;
+  **minor** (→ 1.6.0) as soon as one `rfe` is in; **major** is set by a human. Until this is
+  computed automatically, apply the rule by hand.
+- The floating `:1.3` tags above are the current state, not a pattern to copy.
+
+1. Project branches merged into `review` in each component repo, through PRs.
+2. `/release-cut X.Y.Z` cuts `review-X.Y.Z` from `review`; after that only fixes go in,
+   and they are merged back to `review`.
+3. Pin the exact component tags in `values.yaml`; set `Chart.yaml` `version` to X.Y.Z.
+4. A **human** merges `review-X.Y.Z` → the default branch (`main` in issassist-api,
+   `master` elsewhere) in each repo and tags `vX.Y.Z` here.
+5. Publish chart + offline bundle (for air-gapped Dark Site customers).
+
+**Beta features** get a `values.yaml` flag that defaults to off. Staging turns it on;
+customers keep the default. Accepting the feature means flipping the default in the next
+release; rejecting it means a PR that removes both the code and the flag.
