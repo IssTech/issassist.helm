@@ -86,6 +86,21 @@ spec:
               # renders "false".
               {{- $send := (.Values.support | default dict).send }}
               value: {{ ternary "true" "false" (or (kindIs "invalid" $send) (eq ($send | toString) "true")) | quote }}
+            # Whether IssAssist Preview (the 2.0 features) may be turned on at all.
+            # The operator's switch under Settings → IssAssist decides whether it is.
+            - name: IA_PREVIEW_ALLOWED
+              # Fails closed: only `allowed: true`, or leaving the key out for an
+              # upgrade from a chart without it, renders "true". `preview: false`
+              # (the shorthand, not a map) renders "false". Reading `.allowed`
+              # through `default dict` would have turned `false` into an empty map
+              # and rendered "true" (security review 2026/10/29).
+              {{- $previewBlock := (.Values.global | default dict).preview }}
+              {{- $previewOk := kindIs "invalid" $previewBlock }}
+              {{- if kindIs "map" $previewBlock }}
+              {{- $allowed := $previewBlock.allowed }}
+              {{- $previewOk = or (kindIs "invalid" $allowed) (eq ($allowed | toString) "true") }}
+              {{- end }}
+              value: {{ ternary "true" "false" $previewOk | quote }}
 {{- if .Values.api.issTechConnect.url }}
             # Connection to IssTech's dashboard. Absent entirely when no URL is
             # configured, so the application never registers the reporting job.

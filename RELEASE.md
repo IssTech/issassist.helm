@@ -12,6 +12,30 @@ in `docs/projects/<date>-<slug>.md`, linked from the entry.
 
 ## Next chart release — in development
 
+### `global.preview.allowed`: whether IssAssist Preview may be turned on
+
+**What it is.** IssAssist Preview turns on the IssAssist 2.0 features, which are not
+verified yet. This key decides whether an operator may turn it on at all. Whether it
+*is* on is the operator's switch under Settings → IssAssist, after a warning, and it is
+off until they turn it on.
+
+**Where it is.** `values.yaml`:
+
+```yaml
+global:
+  preview:
+    allowed: true   # false locks Preview off
+```
+
+Rendered as `IA_PREVIEW_ALLOWED` on the API.
+
+**What changed for them.** Nothing by default: the key is `true`, and Preview itself is
+off after install and upgrade. **A site that must not run unverified features should set
+`allowed: false`**; the switch is then shown locked. Any value other than `true` locks it,
+so a typo errs on the safe side. An upgrade from a chart without the key behaves as `true`.
+
+**Where the detail is.** [docs/projects/2026-10-29-issassist-preview.md](docs/projects/2026-10-29-issassist-preview.md)
+
 ### `tsmAgent.tapeSync.concurrency`: how many servers the tape sync asks at once
 
 **What it is.** A cap on how many Storage Protect servers the tape sync asks at the same

@@ -40,6 +40,14 @@ global:
     fromEmailAddress: ""
     fromName: ""
 
+  # IssAssist Preview: the IssAssist 2.0 features, unverified (IA-0018).
+  preview:
+    # true: an operator may turn Preview on under Settings → IssAssist, after
+    # acknowledging a warning; it is off until they do, on every installation.
+    # false: Preview is locked off and the switch is shown locked. For a site
+    # that must not run unverified features. A value other than true locks it.
+    allowed: true
+
   # Lifetimes of internal certificates
   certDuration: 8760h  # 1 year
   caCertDuration: 87600h  # 10 years
