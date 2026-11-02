@@ -153,9 +153,12 @@ data:
     port = 50051
 
     # Enable TLS for the connection with the IssAssist TSM agent.
+    # Always on: mutual TLS with the api-cert client certificate, issued by
+    # issassist-ca-issuer. Nothing between IssAssist's services goes unencrypted
+    # (product owner, 2026/10/30). There is deliberately no values.yaml switch.
     # Default:
     # tls = true
-    tls = false
+    tls = true
 
     # A certificate belonging to a certificate authority (CA) which is recognized by
     # the TSM agent and which verifies `tsm_agent.client_cert_path`.

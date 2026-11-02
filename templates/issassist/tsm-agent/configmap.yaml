@@ -28,7 +28,9 @@ data:
     # authentication, between the server and its clients.
     # Default:
     # tls = false
-    tls = false
+    # Always on: the server requires a client certificate from
+    # issassist-ca-issuer (mutual TLS). See the API's [tsm_agent] section.
+    tls = true
 
     # A certificate belonging to a certificate authority (CA) that verifies the
     # server certificate.

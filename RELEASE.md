@@ -12,6 +12,30 @@ in `docs/projects/<date>-<slug>.md`, linked from the entry.
 
 ## Next chart release — in development
 
+### The API and the TSM agent now talk over mutual TLS
+
+**What it is.** The connection between IssAssist's API and its TSM agent, which carries
+everything collected from Storage Protect, was unencrypted. It is now encrypted, and both
+sides prove who they are with certificates from IssAssist's own internal CA. A
+connection without the API's certificate is refused.
+
+**Where it is.** Nothing to set: `[tsm_agent] tls` (API) and `[connection] tls` (TSM agent)
+are now `true` in their ConfigMaps. There is deliberately **no `values.yaml` switch**, because
+nothing between IssAssist's services may run unencrypted. The certificates already existed
+(`api-cert`, `tsm-agent-cert`, both from `issassist-ca-issuer`).
+
+**What changed for them.**
+- **The TSM agent's liveness probe changed** from the kubelet's gRPC probe, which cannot
+  speak TLS, to a check that asks the agent's health service over mutual TLS from inside
+  the pod. It runs every 30 s.
+- **The API and the TSM agent now restart when their own configuration changes.** Before,
+  only a logging change restarted them.
+- **During the upgrade**, the API may log `Could not connect to TSM agent` once while the
+  agents restart. It reconnects by itself; the next Storage Protect sync (every 10 minutes)
+  shows it working.
+
+**Where the detail is.** [docs/projects/2026-11-02-tsm-agent-mtls.md](docs/projects/2026-11-02-tsm-agent-mtls.md)
+
 ### `global.preview.allowed`: whether IssAssist Preview may be turned on
 
 **What it is.** IssAssist Preview turns on the IssAssist 2.0 features, which are not

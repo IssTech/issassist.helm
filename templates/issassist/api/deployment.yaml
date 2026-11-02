@@ -13,6 +13,9 @@ spec:
       annotations:
         # Restart on a change to logging.*: env is read once, at start.
         checksum/logging: {{ include (print $.Template.BasePath "/issassist/logging-configmap.yaml") . | sha256sum }}
+        # And on a change to config.toml: it is read once, at start, so a switch
+        # such as [tsm_agent] tls would otherwise wait for an unrelated restart.
+        checksum/config: {{ include (print $.Template.BasePath "/issassist/api/configmap.yaml") . | sha256sum }}
       labels:
        app.kubernetes.io/name: api
     spec:

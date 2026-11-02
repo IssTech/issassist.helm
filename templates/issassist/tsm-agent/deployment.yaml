@@ -13,6 +13,9 @@ spec:
       annotations:
         # Restart on a change to logging.*: env is read once, at start.
         checksum/logging: {{ include (print $.Template.BasePath "/issassist/logging-configmap.yaml") . | sha256sum }}
+        # And on a change to config.toml: it is read once, at start, so a switch
+        # such as [tsm_agent] tls would otherwise wait for an unrelated restart.
+        checksum/config: {{ include (print $.Template.BasePath "/issassist/tsm-agent/configmap.yaml") . | sha256sum }}
       labels:
        app.kubernetes.io/name: tsm-agent
     spec:
@@ -46,11 +49,28 @@ spec:
               chmod 600 /app/data/messaging.key && \
               export IA_K8S_AUTH_TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token) && \
               /entrypoint.sh
+          # The kubelet's own gRPC probe cannot speak TLS, and the agent now
+          # requires a client certificate. So the probe asks the standard gRPC
+          # health service over mutual TLS from inside the pod, with the agent's
+          # own certificate (it carries "client auth", and "localhost" is in its
+          # dnsNames). Exit 0 only for SERVING.
           livenessProbe:
-            grpc:
-              port: 50051
+            exec:
+              command:
+                - python
+                - -c
+                - |
+                  import sys, grpc
+                  from grpc_health.v1 import health_pb2, health_pb2_grpc
+                  d = "/app/data/cert/"
+                  rd = lambda f: open(d + f, "rb").read()
+                  creds = grpc.ssl_channel_credentials(rd("issassist-ca.crt"), rd("tsm-agent.key"), rd("tsm-agent.crt"))
+                  with grpc.secure_channel("localhost:50051", creds) as ch:
+                      r = health_pb2_grpc.HealthStub(ch).Check(health_pb2.HealthCheckRequest(), timeout=20)
+                  sys.exit(0 if r.status == health_pb2.HealthCheckResponse.SERVING else 1)
             initialDelaySeconds: 30
-            timeoutSeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 30
           envFrom:
             # IA_LOG_LEVEL, IA_LOG_FORMAT, IA_LOG_KEEP_DAYS, IA_LOG_STORE_FROM
             - configMapRef:
