@@ -12,6 +12,29 @@ in `docs/projects/<date>-<slug>.md`, linked from the entry.
 
 ## Next chart release — in development
 
+### `aiAnalysis.debugWizard.enabled`: the AI debug wizard (IssAssist 2.0)
+
+**What it is.** Turns on the AI debug wizard, a step-by-step view of one AI analysis that
+shows real names next to their stand-ins. It is meant for a test installation such as
+staging.
+
+**Where it is.** `values.yaml`:
+
+```yaml
+aiAnalysis:
+  debugWizard:
+    enabled: false   # only `true` turns it on
+```
+
+Rendered as `IA_AI_DEBUG_WIZARD` in the `issassist-ai-analysis` ConfigMap. Editing that
+ConfigMap with kubectl and restarting the API also turns it on or off, **until the next
+`helm upgrade`, which puts the values.yaml setting back**.
+
+**What changed for them.** Nothing: it is off by default, and anything but `true` (`yes`, a
+missing key after `--reuse-values`) is off.
+
+**Where the detail is.** issassist-api `docs/projects/2026-11-02-ai-debug-wizard.md`.
+
 ### `aiAnalysis.providers.<id>.apiKey` and a generated `IA_AI_SECRET_KEY` (IssAssist 2.0)
 
 **What it is.** An AI provider's key can now be given at installation either as a Secret
