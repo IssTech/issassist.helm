@@ -5,7 +5,8 @@ AI analysis (#463): what this site allows, from `aiAnalysis.*` and
 values name, through `secretKeyRef` in the API Deployment.
 
 Every switch fails closed:
-* IA_DARK_SITE renders "false" only for `darkSite: false` or a missing key.
+* IA_DARK_SITE renders "false" only for a literal `darkSite: false`. Missing,
+  null, or anything else is dark (security review of #463, 2026/11/02).
 * IA_AI_<ID>_ALLOWED renders "true" only for `allowed: true`.
 
 Read through `default dict`: `--reuse-values` rebases on the previous release's
@@ -16,11 +17,15 @@ values, where these keys did not exist yet.
 {{- $ai := .Values.aiAnalysis | default dict }}
 {{- $providers := $ai.providers | default dict }}
 {{- $dark := true }}
-{{- if or (not (hasKey $global "darkSite")) (eq (toString $global.darkSite) "false") }}{{ $dark = false }}{{ end }}
+{{- if and (hasKey $global "darkSite") (eq (toString $global.darkSite) "false") }}{{ $dark = false }}{{ end }}
 {{- $local := $providers.local | default dict }}
 {{- $endpoint := $local.endpoint | default "" }}
+{{- /* The value is never printed: a URL with credentials in it must not end up in CI logs. */}}
 {{- if and $endpoint (not (hasPrefix "https://" $endpoint)) }}
-{{- fail (printf "aiAnalysis.providers.local.endpoint must be https://, not %q: only encrypted connections are allowed" $endpoint) }}
+{{- fail "aiAnalysis.providers.local.endpoint must start with https://: only encrypted connections are allowed" }}
+{{- end }}
+{{- if and $endpoint (contains "@" (index (splitList "/" (trimPrefix "https://" $endpoint)) 0)) }}
+{{- fail "aiAnalysis.providers.local.endpoint must not carry credentials (user:password@); put a token in local.existingSecret" }}
 {{- end }}
 apiVersion: v1
 kind: ConfigMap
