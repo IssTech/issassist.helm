@@ -104,14 +104,21 @@ aiAnalysis:
       apiKey: ""
     claude:
       allowed: false
-      existingSecret: "issassist-ai-anthropic"  # key "api-key"
+      # Naming a Secret here means the installation owns Claude's key: the web GUI
+      # then shows it as set by the installation and cannot set its own, even when
+      # that Secret does not exist yet. Empty by default so either way works.
+      existingSecret: ""    # e.g. "issassist-ai-anthropic", key "api-key"
       apiKey: ""
     gemini:
       allowed: false
     bob:
       allowed: false
-      # Bob's key is used by its per-run pods (slice 4), never by the API pod.
-      # Until then it can be entered in the web GUI.
+      # Bob's key is for its per-run pods (slice 4) and is never mounted into the API
+      # pod. Set here, it is rendered as a Secret in this namespace and only its name
+      # is given to the API, so the web GUI shows it as set by the installation.
+      # Without one, it can be entered in the web GUI.
+      existingSecret: ""
+      apiKey: ""
     isstech:
       allowed: false
     copilot:
