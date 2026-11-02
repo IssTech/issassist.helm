@@ -48,6 +48,10 @@ global:
     # that must not run unverified features. A value other than true locks it.
     allowed: true
 
+  # Dark Site: only AI providers inside this cluster may be used (#463). Fails
+  # closed: anything but false (or leaving it out on an upgrade) is dark.
+  darkSite: false
+
   # Lifetimes of internal certificates
   certDuration: 8760h  # 1 year
   caCertDuration: 87600h  # 10 years
@@ -69,6 +73,38 @@ global:
       issuerType: "disabled"
       # Issuer or ClusterIssuer name.
       issuer: ""
+
+# AI analysis of Storage Protect alerts (#463, IssAssist 2.0, behind Preview).
+# The site decides what is possible here; the operator switches providers on
+# under Settings → Configuration → AI analysis. A provider runs only when both
+# say yes. Keys are never in this file: name an existing Secret, created by the
+# operator, e.g.
+#   kubectl create secret generic issassist-ai-anthropic --from-literal=api-key=…
+# Only https endpoints are accepted; there is no switch for plain HTTP.
+aiAnalysis:
+  # Highest daily cap, EUR, an operator may set for providers outside this cluster.
+  maxDailyCapEur: 20
+  # Analyses running at once.
+  maxConcurrent: 2
+  providers:
+    # An OpenAI-compatible endpoint (Ollama, vLLM, the IssAssist LLM, Azure
+    # OpenAI). Local only when the host is a cluster service name.
+    local:
+      allowed: false
+      endpoint: ""          # must be https://, e.g. https://issassist-llm.issassist.svc:11434/v1
+      model: "qwen2.5:14b"
+      existingSecret: ""    # optional bearer token, key "api-key"
+    claude:
+      allowed: false
+      existingSecret: "issassist-ai-anthropic"  # key "api-key"
+    gemini:
+      allowed: false
+    bob:
+      allowed: false
+    isstech:
+      allowed: false
+    copilot:
+      allowed: false
 
 # How the API and the TSM agent log. Applied to both, through the
 # issassist-logging ConfigMap; changing a value restarts their pods.

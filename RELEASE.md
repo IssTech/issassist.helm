@@ -12,6 +12,44 @@ in `docs/projects/<date>-<slug>.md`, linked from the entry.
 
 ## Next chart release — in development
 
+### `aiAnalysis.*` and `global.darkSite`: what AI analysis may use (IssAssist 2.0)
+
+**What it is.** AI analysis explains Storage Protect alerts with an AI (mission #463,
+behind IssAssist Preview). These keys decide which AI providers this installation may use
+at all, where the local one is, and the most an operator may spend per day. Whether a
+provider is **on** is the operator's switch under Settings → Configuration → AI analysis.
+
+**Where it is.** `values.yaml`:
+
+```yaml
+global:
+  darkSite: false        # true: only providers inside this cluster may be used
+aiAnalysis:
+  maxDailyCapEur: 20     # the highest daily cap an operator may set
+  maxConcurrent: 2
+  providers:
+    local:
+      allowed: false
+      endpoint: ""        # must be https://
+      model: "qwen2.5:14b"
+      existingSecret: ""  # optional bearer token, key "api-key"
+    claude:
+      allowed: false
+      existingSecret: "issassist-ai-anthropic"   # key "api-key"
+```
+
+Rendered into the new ConfigMap `issassist-ai-analysis` and, for keys, into optional
+`secretKeyRef`s on the API. A change restarts the API pod.
+
+**What changed for them.** Nothing by default: every provider is `allowed: false`.
+**To use Claude, create the Secret first** (`kubectl create secret generic
+issassist-ai-anthropic --from-literal=api-key=…`) and set `claude.allowed: true`. The key
+is never in `values.yaml`. **Every switch fails closed:** `darkSite` is off only for
+`false`; a provider is allowed only for `allowed: true`. **A local endpoint that is not
+`https://` fails the install** with a message saying so; there is no switch for plain HTTP.
+
+**Where the detail is.** issassist-api `docs/projects/2026-10-29-ai-analysis-api.md`.
+
 ### `global.preview.allowed`: whether IssAssist Preview may be turned on
 
 **What it is.** IssAssist Preview turns on the IssAssist 2.0 features, which are not

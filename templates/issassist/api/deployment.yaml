@@ -13,6 +13,8 @@ spec:
       annotations:
         # Restart on a change to logging.*: env is read once, at start.
         checksum/logging: {{ include (print $.Template.BasePath "/issassist/logging-configmap.yaml") . | sha256sum }}
+        # Restart on a change to aiAnalysis.* / global.darkSite: env is read once, at start.
+        checksum/ai-analysis: {{ include (print $.Template.BasePath "/issassist/api/ai-analysis-configmap.yaml") . | sha256sum }}
       labels:
        app.kubernetes.io/name: api
     spec:
@@ -62,6 +64,9 @@ spec:
             # IA_LOG_LEVEL, IA_LOG_FORMAT, IA_LOG_KEEP_DAYS, IA_LOG_STORE_FROM
             - configMapRef:
                 name: issassist-logging
+            # IA_DARK_SITE, IA_AI_*: what AI analysis may use (#463)
+            - configMapRef:
+                name: issassist-ai-analysis
           env:
             # Every log line names the pod and node it came from: replicas run
             # on different nodes, and a network fault is often only one of them.
@@ -176,6 +181,18 @@ spec:
                 secretKeyRef:
                   name: api-reporting-salt
                   key: "reporting-salt"
+            # AI provider keys (#463), from Secrets the operator creates. Optional,
+            # so the pod starts without one and the provider shows "key missing".
+            {{- range $id, $p := ((.Values.aiAnalysis | default dict).providers | default dict) }}
+            {{- if and (kindIs "map" $p) $p.existingSecret }}
+            - name: IA_AI_{{ upper $id }}_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $p.existingSecret | quote }}
+                  key: "api-key"
+                  optional: true
+            {{- end }}
+            {{- end }}
             {{if .Values.global.mail.smtpHost }}
             - name: IA_SMTP_HOST
               value: {{ .Values.global.mail.smtpHost | quote }}

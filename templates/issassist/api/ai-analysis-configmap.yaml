@@ -1,0 +1,42 @@
+{{/*
+AI analysis (#463): what this site allows, from `aiAnalysis.*` and
+`global.darkSite`. values.yaml -> this ConfigMap -> `envFrom` on the API ->
+`issassist.ai_analysis.site`. Keys are not here: they come from the Secrets the
+values name, through `secretKeyRef` in the API Deployment.
+
+Every switch fails closed:
+* IA_DARK_SITE renders "false" only for `darkSite: false` or a missing key.
+* IA_AI_<ID>_ALLOWED renders "true" only for `allowed: true`.
+
+Read through `default dict`: `--reuse-values` rebases on the previous release's
+values, where these keys did not exist yet.
+*/}}
+{{- if .Values.api.enabled }}
+{{- $global := .Values.global | default dict }}
+{{- $ai := .Values.aiAnalysis | default dict }}
+{{- $providers := $ai.providers | default dict }}
+{{- $dark := true }}
+{{- if or (not (hasKey $global "darkSite")) (eq (toString $global.darkSite) "false") }}{{ $dark = false }}{{ end }}
+{{- $local := $providers.local | default dict }}
+{{- $endpoint := $local.endpoint | default "" }}
+{{- if and $endpoint (not (hasPrefix "https://" $endpoint)) }}
+{{- fail (printf "aiAnalysis.providers.local.endpoint must be https://, not %q: only encrypted connections are allowed" $endpoint) }}
+{{- end }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: issassist-ai-analysis
+data:
+  IA_DARK_SITE: {{ ternary "true" "false" $dark | quote }}
+  IA_AI_MAX_DAILY_CAP_EUR: {{ $ai.maxDailyCapEur | default 20 | toString | quote }}
+  IA_AI_MAX_CONCURRENT: {{ $ai.maxConcurrent | default 2 | toString | quote }}
+  {{- range $id := list "local" "claude" "gemini" "bob" "isstech" "copilot" }}
+  {{- $p := get $providers $id | default dict }}
+  IA_AI_{{ upper $id }}_ALLOWED: {{ ternary "true" "false" (eq (toString $p.allowed) "true") | quote }}
+  {{- if $p.existingSecret }}
+  IA_AI_{{ upper $id }}_SECRET_NAME: {{ $p.existingSecret | quote }}
+  {{- end }}
+  {{- end }}
+  IA_AI_LOCAL_ENDPOINT: {{ $endpoint | quote }}
+  IA_AI_LOCAL_MODEL: {{ $local.model | default "" | quote }}
+{{- end }}
