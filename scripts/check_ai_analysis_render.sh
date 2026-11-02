@@ -26,7 +26,7 @@ expect "credentials in the endpoint fail"    'must not carry credentials' -- --s
 expect_not "a failing endpoint is not echoed" "${marker}" -- --set "aiAnalysis.providers.local.endpoint=${with_creds}"
 expect_not "an @ in the path is not credentials" 'must not carry credentials' -- --set "aiAnalysis.providers.local.endpoint=https://x.svc/v1/@m"
 expect_not "the API pod never holds the Bob key" 'IA_AI_BOB_API_KEY' -- --set aiAnalysis.providers.bob.existingSecret=issassist-ai-bob
-expect "the Claude key reference is optional" 'optional: true' --
+expect "the Claude key reference is optional" 'optional: true' -- --set aiAnalysis.providers.claude.existingSecret=issassist-ai-anthropic
 expect "a cap of 0 renders 0, not the default"        'IA_AI_MAX_DAILY_CAP_EUR: "0"' -- --set aiAnalysis.maxDailyCapEur=0
 expect "maxConcurrent 0 renders 0, not the default"   'IA_AI_MAX_CONCURRENT: "0"' -- --set aiAnalysis.maxConcurrent=0
 expect "a missing cap renders the default 20"         'IA_AI_MAX_DAILY_CAP_EUR: "20"' -- --set aiAnalysis.maxDailyCapEur=null
@@ -43,7 +43,10 @@ expect "apiKey renders its own Secret"                'name: issassist-ai-claude
 expect "apiKey wins over existingSecret in the pod"   'name: "issassist-ai-claude-key"' -- --set "aiAnalysis.providers.claude.apiKey=${keymark}"
 expect "the Secret name shown is the rendered one"    'IA_AI_CLAUDE_SECRET_NAME: "issassist-ai-claude-key"' -- --set "aiAnalysis.providers.claude.apiKey=${keymark}"
 expect_not "no apiKey renders no key Secret"          'name: issassist-ai-claude-key' --
-expect_not "a Bob apiKey never reaches the API pod"   'IA_AI_BOB_API_KEY|issassist-ai-bob-key' -- --set "aiAnalysis.providers.bob.apiKey=${keymark}"
+expect_not "a Bob apiKey never reaches the API pod"   'IA_AI_BOB_API_KEY' -- --set "aiAnalysis.providers.bob.apiKey=${keymark}"
+expect "a Bob apiKey renders Bob's own Secret"        'name: issassist-ai-bob-key' -- --set "aiAnalysis.providers.bob.apiKey=${keymark}"
+expect "the API is told Bob's key is Helm's (name only)" 'IA_AI_BOB_SECRET_NAME: "issassist-ai-bob-key"' -- --set "aiAnalysis.providers.bob.apiKey=${keymark}"
+expect_not "no Secret is named for Claude by default"  'IA_AI_CLAUDE_SECRET_NAME' --
 expect "the web-key encryption key is generated"      'secret-generator.v1.mittwald.de/autogenerate: "ai-secret-key"' --
 expect "the API reads IA_AI_SECRET_KEY"               'name: IA_AI_SECRET_KEY' --
 exit $fail

@@ -60,8 +60,9 @@ when Helm sets none. `apiKey` wins over `existingSecret`: the chart then renders
 */}}
 {{- define "issassist.aiKeySecretName" -}}
 {{- $p := .p | default dict -}}
-{{- /* Only where ai-provider-keys.yaml renders one: never Bob's (slice 4). */ -}}
-{{- if and (kindIs "map" $p) $p.apiKey (has .id (list "local" "claude" "gemini" "isstech" "copilot")) -}}
+{{- /* Wherever ai-provider-keys.yaml renders one: Bob's too. Whether a key is mounted
+       into the API pod is decided in the Deployment, and Bob's never is. */ -}}
+{{- if and (kindIs "map" $p) $p.apiKey (has .id (list "local" "claude" "gemini" "bob" "isstech" "copilot")) -}}
 issassist-ai-{{ .id }}-key
 {{- else if and (kindIs "map" $p) $p.existingSecret -}}
 {{ $p.existingSecret }}
