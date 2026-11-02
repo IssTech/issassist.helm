@@ -1,0 +1,27 @@
+{{/*
+AI provider keys given directly as `aiAnalysis.providers.<id>.apiKey` (#463 slice 1b).
+
+Prefer `existingSecret`: Helm keeps user-supplied values in plaintext in the release
+(`helm get values`) and keeps a copy per revision, as for `imageCredentials`. This
+exists because IssAssist is installed by the customer, who may not create Secrets
+by hand. The key can also be entered later in the web GUI; a key here always wins.
+
+A fixed list, as in the ConfigMap and the Deployment. Bob is not on it: its key is
+for the per-run pods of slice 4 and never reaches the API pod from Helm.
+*/}}
+{{- if .Values.api.enabled }}
+{{- $providers := (.Values.aiAnalysis | default dict).providers | default dict }}
+{{- range $id := list "local" "claude" "gemini" "isstech" "copilot" }}
+{{- $p := get $providers $id }}
+{{- if and (kindIs "map" $p) $p.apiKey }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: issassist-ai-{{ $id }}-key
+type: Opaque
+stringData:
+  api-key: {{ $p.apiKey | quote }}
+{{- end }}
+{{- end }}
+{{- end }}

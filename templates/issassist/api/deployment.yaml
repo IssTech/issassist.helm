@@ -181,8 +181,16 @@ spec:
                 secretKeyRef:
                   name: api-reporting-salt
                   key: "reporting-salt"
-            # AI provider keys (#463), from Secrets the operator creates. Optional,
-            # so the pod starts without one and the provider shows "key missing".
+            # Encrypts provider keys entered in the web GUI (#463 slice 1b).
+            - name: IA_AI_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: api-ai-secret-key
+                  key: "ai-secret-key"
+            # AI provider keys (#463) set through Helm: the Secret the operator names
+            # (existingSecret), or the one the chart renders from apiKey (slice 1b).
+            # Optional, so the pod starts without one; the key can then be entered in
+            # the web GUI instead. A key here always wins over the web GUI's.
             # Never Bob's: Bob runs in its own pod per run, and the API pod must
             # never hold the Bob key (decided 2026/11/01).
             {{- /* A fixed list, as in the ConfigMap: a key under any other name (BOB,
@@ -190,11 +198,12 @@ spec:
             {{- $aiProviders := (.Values.aiAnalysis | default dict).providers | default dict }}
             {{- range $id := list "local" "claude" "gemini" "isstech" "copilot" }}
             {{- $p := get $aiProviders $id }}
-            {{- if and (kindIs "map" $p) $p.existingSecret }}
+            {{- $secret := include "issassist.aiKeySecretName" (dict "id" $id "p" $p) }}
+            {{- if $secret }}
             - name: IA_AI_{{ upper $id }}_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ $p.existingSecret | quote }}
+                  name: {{ $secret | quote }}
                   key: "api-key"
                   optional: true
             {{- end }}

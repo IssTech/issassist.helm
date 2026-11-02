@@ -46,8 +46,9 @@ data:
   {{- range $id := list "local" "claude" "gemini" "bob" "isstech" "copilot" }}
   {{- $p := get $providers $id | default dict }}
   IA_AI_{{ upper $id }}_ALLOWED: {{ ternary "true" "false" (eq (toString $p.allowed) "true") | quote }}
-  {{- if $p.existingSecret }}
-  IA_AI_{{ upper $id }}_SECRET_NAME: {{ $p.existingSecret | quote }}
+  {{- $secret := include "issassist.aiKeySecretName" (dict "id" $id "p" $p) }}
+  {{- if $secret }}
+  IA_AI_{{ upper $id }}_SECRET_NAME: {{ $secret | quote }}
   {{- end }}
   {{- end }}
   IA_AI_LOCAL_ENDPOINT: {{ $endpoint | quote }}

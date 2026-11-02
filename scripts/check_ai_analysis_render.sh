@@ -33,4 +33,13 @@ expect "a missing cap renders the default 20"         'IA_AI_MAX_DAILY_CAP_EUR: 
 expect_not "BOB in capitals is still kept out of the API pod" 'IA_AI_BOB_API_KEY' -- --set aiAnalysis.providers.BOB.existingSecret=issassist-ai-bob
 expect_not "an unknown provider id adds no key to the API pod" 'IA_AI_EVIL_API_KEY' -- --set aiAnalysis.providers.evil.existingSecret=x
 expect "a query string in the endpoint fails"         'must not carry a query string' -- --set "aiAnalysis.providers.local.endpoint=https://x.svc/v1?k=v"
+# Slice 1b: keys through Helm, and the key that encrypts keys entered in the web GUI.
+keymark="k$(od -An -N6 -tx1 /dev/urandom | tr -d ' \n')"
+expect "apiKey renders its own Secret"                'name: issassist-ai-claude-key' -- --set "aiAnalysis.providers.claude.apiKey=${keymark}"
+expect "apiKey wins over existingSecret in the pod"   'name: "issassist-ai-claude-key"' -- --set "aiAnalysis.providers.claude.apiKey=${keymark}"
+expect "the Secret name shown is the rendered one"    'IA_AI_CLAUDE_SECRET_NAME: "issassist-ai-claude-key"' -- --set "aiAnalysis.providers.claude.apiKey=${keymark}"
+expect_not "no apiKey renders no key Secret"          'name: issassist-ai-claude-key' --
+expect_not "a Bob apiKey never reaches the API pod"   'IA_AI_BOB_API_KEY|issassist-ai-bob-key' -- --set "aiAnalysis.providers.bob.apiKey=${keymark}"
+expect "the web-key encryption key is generated"      'secret-generator.v1.mittwald.de/autogenerate: "ai-secret-key"' --
+expect "the API reads IA_AI_SECRET_KEY"               'name: IA_AI_SECRET_KEY' --
 exit $fail
