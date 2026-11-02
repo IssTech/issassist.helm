@@ -86,6 +86,13 @@ aiAnalysis:
   maxDailyCapEur: 20
   # Analyses running at once.
   maxConcurrent: 2
+  # The AI debug wizard (Settings > Configuration > AI analysis > Debug wizard):
+  # walks one alert through every step to the provider and back, and shows real
+  # names next to their stand-ins. For a test installation only; off everywhere
+  # else. Only `true` turns it on. It can also be set with kubectl in the
+  # issassist-ai-analysis ConfigMap (IA_AI_DEBUG_WIZARD), until the next upgrade.
+  debugWizard:
+    enabled: false
   # Provider keys (slice 1b): set one here at install, or later in the web GUI
   # (Settings > Configuration > AI analysis). A key set here always wins, and the
   # web GUI then shows it as "Set by the installation" and cannot change it.

@@ -8,6 +8,10 @@ Every switch fails closed:
 * IA_DARK_SITE renders "false" only for a literal `darkSite: false`. Missing,
   null, or anything else is dark (security review of #463, 2026/11/02).
 * IA_AI_<ID>_ALLOWED renders "true" only for `allowed: true`.
+* IA_AI_DEBUG_WIZARD renders "true" only for `debugWizard.enabled: true`. The
+  wizard shows real names next to their stand-ins, so it is for a test
+  installation (staging). Only Helm, or kubectl editing this ConfigMap, sets it;
+  a kubectl edit lasts until the next `helm upgrade`.
 
 Read through `default dict`: `--reuse-values` rebases on the previous release's
 values, where these keys did not exist yet.
@@ -23,6 +27,7 @@ values, where these keys did not exist yet.
 {{- if and (hasKey $ai "maxDailyCapEur") (not (kindIs "invalid" $ai.maxDailyCapEur)) }}{{ $cap = $ai.maxDailyCapEur }}{{ end }}
 {{- $concurrent := 2 }}
 {{- if and (hasKey $ai "maxConcurrent") (not (kindIs "invalid" $ai.maxConcurrent)) }}{{ $concurrent = $ai.maxConcurrent }}{{ end }}
+{{- $wizard := $ai.debugWizard | default dict }}
 {{- $local := $providers.local | default dict }}
 {{- $endpoint := $local.endpoint | default "" }}
 {{- /* The value is never printed: a URL with credentials in it must not end up in CI logs. */}}
@@ -43,6 +48,7 @@ data:
   IA_DARK_SITE: {{ ternary "true" "false" $dark | quote }}
   IA_AI_MAX_DAILY_CAP_EUR: {{ $cap | toString | quote }}
   IA_AI_MAX_CONCURRENT: {{ $concurrent | toString | quote }}
+  IA_AI_DEBUG_WIZARD: {{ ternary "true" "false" (eq (toString $wizard.enabled) "true") | quote }}
   {{- range $id := list "local" "claude" "gemini" "bob" "isstech" "copilot" }}
   {{- $p := get $providers $id | default dict }}
   IA_AI_{{ upper $id }}_ALLOWED: {{ ternary "true" "false" (eq (toString $p.allowed) "true") | quote }}
