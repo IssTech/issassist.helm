@@ -51,3 +51,20 @@ Two ways to supply registry credentials:
         | replace "@" "_" | replace "/" "slash" | replace "\\" "slash" }}
 {{- end }}
 {{- end }}
+
+{{/*
+The Secret that holds an AI provider's key set through Helm (#463 slice 1b), or ""
+when Helm sets none. `apiKey` wins over `existingSecret`: the chart then renders
+`issassist-ai-<id>-key` (templates/issassist/api/ai-provider-keys.yaml). Called with
+(dict "id" <provider id> "p" <its values map>).
+*/}}
+{{- define "issassist.aiKeySecretName" -}}
+{{- $p := .p | default dict -}}
+{{- /* Wherever ai-provider-keys.yaml renders one: Bob's too. Whether a key is mounted
+       into the API pod is decided in the Deployment, and Bob's never is. */ -}}
+{{- if and (kindIs "map" $p) $p.apiKey (has .id (list "local" "claude" "gemini" "bob" "isstech" "copilot")) -}}
+issassist-ai-{{ .id }}-key
+{{- else if and (kindIs "map" $p) (trim (toString ($p.existingSecret | default ""))) -}}
+{{ trim (toString $p.existingSecret) }}
+{{- end -}}
+{{- end }}

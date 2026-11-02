@@ -86,6 +86,13 @@ aiAnalysis:
   maxDailyCapEur: 20
   # Analyses running at once.
   maxConcurrent: 2
+  # Provider keys (slice 1b): set one here at install, or later in the web GUI
+  # (Settings > Configuration > AI analysis). A key set here always wins, and the
+  # web GUI then shows it as "Set by the installation" and cannot change it.
+  #   existingSecret: a Secret you created, key "api-key" (preferred), or
+  #   apiKey: the key itself; the chart renders the Secret. Helm keeps this value
+  #     in plaintext in the release (`helm get values`), so prefer existingSecret.
+  #     When both are set, apiKey is used.
   providers:
     # An OpenAI-compatible endpoint (Ollama, vLLM, the IssAssist LLM, Azure
     # OpenAI). Local only when the host is a cluster service name.
@@ -94,13 +101,24 @@ aiAnalysis:
       endpoint: ""          # must be https://, e.g. https://issassist-llm.issassist.svc:11434/v1
       model: "qwen2.5:14b"
       existingSecret: ""    # optional bearer token, key "api-key"
+      apiKey: ""
     claude:
       allowed: false
-      existingSecret: "issassist-ai-anthropic"  # key "api-key"
+      # Naming a Secret here means the installation owns Claude's key: the web GUI
+      # then shows it as set by the installation and cannot set its own, even when
+      # that Secret does not exist yet. Empty by default so either way works.
+      existingSecret: ""    # e.g. "issassist-ai-anthropic", key "api-key"
+      apiKey: ""
     gemini:
       allowed: false
     bob:
       allowed: false
+      # Bob's key is for its per-run pods (slice 4) and is never mounted into the API
+      # pod. Set here, it is rendered as a Secret in this namespace and only its name
+      # is given to the API, so the web GUI shows it as set by the installation.
+      # Without one, it can be entered in the web GUI.
+      existingSecret: ""
+      apiKey: ""
     isstech:
       allowed: false
     copilot:
