@@ -64,7 +64,7 @@ when Helm sets none. `apiKey` wins over `existingSecret`: the chart then renders
        into the API pod is decided in the Deployment, and Bob's never is. */ -}}
 {{- if and (kindIs "map" $p) $p.apiKey (has .id (list "local" "claude" "gemini" "bob" "isstech" "copilot")) -}}
 issassist-ai-{{ .id }}-key
-{{- else if and (kindIs "map" $p) $p.existingSecret -}}
-{{ $p.existingSecret }}
+{{- else if and (kindIs "map" $p) (trim (toString ($p.existingSecret | default ""))) -}}
+{{ trim (toString $p.existingSecret) }}
 {{- end -}}
 {{- end }}

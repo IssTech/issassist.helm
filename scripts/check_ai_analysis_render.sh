@@ -49,4 +49,6 @@ expect "the API is told Bob's key is Helm's (name only)" 'IA_AI_BOB_SECRET_NAME:
 expect_not "no Secret is named for Claude by default"  'IA_AI_CLAUDE_SECRET_NAME' --
 expect "the web-key encryption key is generated"      'secret-generator.v1.mittwald.de/autogenerate: "ai-secret-key"' --
 expect "the API reads IA_AI_SECRET_KEY"               'name: IA_AI_SECRET_KEY' --
+expect_not "a blank existingSecret names no Secret"      'IA_AI_CLAUDE_SECRET_NAME' -- --set "aiAnalysis.providers.claude.existingSecret= "
+expect "an existingSecret is trimmed"                  'IA_AI_CLAUDE_SECRET_NAME: "issassist-ai-anthropic"' -- --set "aiAnalysis.providers.claude.existingSecret= issassist-ai-anthropic "
 exit $fail
