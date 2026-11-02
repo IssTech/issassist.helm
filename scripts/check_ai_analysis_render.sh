@@ -27,4 +27,10 @@ expect_not "a failing endpoint is not echoed" "${marker}" -- --set "aiAnalysis.p
 expect_not "an @ in the path is not credentials" 'must not carry credentials' -- --set "aiAnalysis.providers.local.endpoint=https://x.svc/v1/@m"
 expect_not "the API pod never holds the Bob key" 'IA_AI_BOB_API_KEY' -- --set aiAnalysis.providers.bob.existingSecret=issassist-ai-bob
 expect "the Claude key reference is optional" 'optional: true' --
+expect "a cap of 0 renders 0, not the default"        'IA_AI_MAX_DAILY_CAP_EUR: "0"' -- --set aiAnalysis.maxDailyCapEur=0
+expect "maxConcurrent 0 renders 0, not the default"   'IA_AI_MAX_CONCURRENT: "0"' -- --set aiAnalysis.maxConcurrent=0
+expect "a missing cap renders the default 20"         'IA_AI_MAX_DAILY_CAP_EUR: "20"' -- --set aiAnalysis.maxDailyCapEur=null
+expect_not "BOB in capitals is still kept out of the API pod" 'IA_AI_BOB_API_KEY' -- --set aiAnalysis.providers.BOB.existingSecret=issassist-ai-bob
+expect_not "an unknown provider id adds no key to the API pod" 'IA_AI_EVIL_API_KEY' -- --set aiAnalysis.providers.evil.existingSecret=x
+expect "a query string in the endpoint fails"         'must not carry a query string' -- --set "aiAnalysis.providers.local.endpoint=https://x.svc/v1?k=v"
 exit $fail

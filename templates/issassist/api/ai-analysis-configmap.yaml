@@ -18,11 +18,19 @@ values, where these keys did not exist yet.
 {{- $providers := $ai.providers | default dict }}
 {{- $dark := true }}
 {{- if and (hasKey $global "darkSite") (eq (toString $global.darkSite) "false") }}{{ $dark = false }}{{ end }}
+{{- /* Not `default 20`: Sprig's default treats 0 as empty, and a ceiling of 0 is a choice. */}}
+{{- $cap := 20 }}
+{{- if and (hasKey $ai "maxDailyCapEur") (not (kindIs "invalid" $ai.maxDailyCapEur)) }}{{ $cap = $ai.maxDailyCapEur }}{{ end }}
+{{- $concurrent := 2 }}
+{{- if and (hasKey $ai "maxConcurrent") (not (kindIs "invalid" $ai.maxConcurrent)) }}{{ $concurrent = $ai.maxConcurrent }}{{ end }}
 {{- $local := $providers.local | default dict }}
 {{- $endpoint := $local.endpoint | default "" }}
 {{- /* The value is never printed: a URL with credentials in it must not end up in CI logs. */}}
 {{- if and $endpoint (not (hasPrefix "https://" $endpoint)) }}
 {{- fail "aiAnalysis.providers.local.endpoint must start with https://: only encrypted connections are allowed" }}
+{{- end }}
+{{- if and $endpoint (contains "?" $endpoint) }}
+{{- fail "aiAnalysis.providers.local.endpoint must not carry a query string; put a token in local.existingSecret" }}
 {{- end }}
 {{- if and $endpoint (contains "@" (index (splitList "/" (trimPrefix "https://" $endpoint)) 0)) }}
 {{- fail "aiAnalysis.providers.local.endpoint must not carry credentials (user:password@); put a token in local.existingSecret" }}
@@ -33,8 +41,8 @@ metadata:
   name: issassist-ai-analysis
 data:
   IA_DARK_SITE: {{ ternary "true" "false" $dark | quote }}
-  IA_AI_MAX_DAILY_CAP_EUR: {{ $ai.maxDailyCapEur | default 20 | toString | quote }}
-  IA_AI_MAX_CONCURRENT: {{ $ai.maxConcurrent | default 2 | toString | quote }}
+  IA_AI_MAX_DAILY_CAP_EUR: {{ $cap | toString | quote }}
+  IA_AI_MAX_CONCURRENT: {{ $concurrent | toString | quote }}
   {{- range $id := list "local" "claude" "gemini" "bob" "isstech" "copilot" }}
   {{- $p := get $providers $id | default dict }}
   IA_AI_{{ upper $id }}_ALLOWED: {{ ternary "true" "false" (eq (toString $p.allowed) "true") | quote }}

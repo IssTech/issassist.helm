@@ -185,8 +185,12 @@ spec:
             # so the pod starts without one and the provider shows "key missing".
             # Never Bob's: Bob runs in its own pod per run, and the API pod must
             # never hold the Bob key (decided 2026/11/01).
-            {{- range $id, $p := ((.Values.aiAnalysis | default dict).providers | default dict) }}
-            {{- if and (kindIs "map" $p) $p.existingSecret (ne $id "bob") }}
+            {{- /* A fixed list, as in the ConfigMap: a key under any other name (BOB,
+                   evil) is ignored, and bob is not on it. */}}
+            {{- $aiProviders := (.Values.aiAnalysis | default dict).providers | default dict }}
+            {{- range $id := list "local" "claude" "gemini" "isstech" "copilot" }}
+            {{- $p := get $aiProviders $id }}
+            {{- if and (kindIs "map" $p) $p.existingSecret }}
             - name: IA_AI_{{ upper $id }}_API_KEY
               valueFrom:
                 secretKeyRef:

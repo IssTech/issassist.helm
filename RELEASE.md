@@ -47,9 +47,12 @@ issassist-ai-anthropic --from-literal=api-key=…`) and set `claude.allowed: tru
 is never in `values.yaml`. **Every switch fails closed:** `darkSite` is off only for a
 literal `false`. **Missing or null is dark**, so an upgrade with `--reuse-values` from a
 chart without the key starts as a Dark Site until `global.darkSite: false` is set; a
-provider is allowed only for `allowed: true`. **A local endpoint that is not `https://`,
-or that carries credentials (`user:pass@`), fails the install** with a message that does
-not repeat the value. There is no switch for plain HTTP. **The API pod never receives the
+provider is allowed only for `allowed: true`. **`maxDailyCapEur: 0` means 0**: nothing
+outside this cluster can run. **A local endpoint that is not `https://`, or that carries
+credentials (`user:pass@`) or a query string, fails the install** with a message that does
+not repeat the value. Keys are wired only for the known providers (`local`, `claude`,
+`gemini`, `isstech`, `copilot`); any other name under `providers`, `BOB` included, is
+ignored. There is no switch for plain HTTP. **The API pod never receives the
 IBM Bob key**, even if `bob.existingSecret` is set.
 
 Render checks for every one of these cases: `bash scripts/check_ai_analysis_render.sh`
