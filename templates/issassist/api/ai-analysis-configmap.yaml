@@ -49,7 +49,7 @@ data:
   IA_AI_MAX_DAILY_CAP_EUR: {{ $cap | toString | quote }}
   IA_AI_MAX_CONCURRENT: {{ $concurrent | toString | quote }}
   IA_AI_DEBUG_WIZARD: {{ ternary "true" "false" (eq (toString $wizard.enabled) "true") | quote }}
-  {{- range $id := list "local" "claude" "gemini" "bob" "isstech" "copilot" }}
+  {{- range $id := list "local" "claude" "gemini" "bob" "copilot" }}
   {{- $p := get $providers $id | default dict }}
   IA_AI_{{ upper $id }}_ALLOWED: {{ ternary "true" "false" (eq (toString $p.allowed) "true") | quote }}
   {{- $secret := include "issassist.aiKeySecretName" (dict "id" $id "p" $p) }}

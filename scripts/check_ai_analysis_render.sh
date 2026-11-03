@@ -51,4 +51,9 @@ expect "the web-key encryption key is generated"      'secret-generator.v1.mittw
 expect "the API reads IA_AI_SECRET_KEY"               'name: IA_AI_SECRET_KEY' --
 expect_not "a blank existingSecret names no Secret"      'IA_AI_CLAUDE_SECRET_NAME' -- --set "aiAnalysis.providers.claude.existingSecret= "
 expect "an existingSecret is trimmed"                  'IA_AI_CLAUDE_SECRET_NAME: "issassist-ai-anthropic"' -- --set "aiAnalysis.providers.claude.existingSecret= issassist-ai-anthropic "
+# The provider isstech was removed (2026/11/03). A release upgraded with --reuse-values
+# still carries its block: it must render, and nothing of it may reach the API.
+leftover=(--set aiAnalysis.providers.isstech.allowed=true --set "aiAnalysis.providers.isstech.apiKey=${keymark}" --set aiAnalysis.providers.isstech.existingSecret=x)
+expect "a leftover isstech block still renders"        'name: issassist-ai-analysis' -- "${leftover[@]}"
+expect_not "a leftover isstech block reaches nothing"  'ISSTECH|issassist-ai-isstech-key' -- "${leftover[@]}"
 exit $fail

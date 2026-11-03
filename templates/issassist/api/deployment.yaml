@@ -196,7 +196,7 @@ spec:
             {{- /* A fixed list, as in the ConfigMap: a key under any other name (BOB,
                    evil) is ignored, and bob is not on it. */}}
             {{- $aiProviders := (.Values.aiAnalysis | default dict).providers | default dict }}
-            {{- range $id := list "local" "claude" "gemini" "isstech" "copilot" }}
+            {{- range $id := list "local" "claude" "gemini" "copilot" }}
             {{- $p := get $aiProviders $id }}
             {{- $secret := include "issassist.aiKeySecretName" (dict "id" $id "p" $p) }}
             {{- if $secret }}

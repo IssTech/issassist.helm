@@ -126,8 +126,6 @@ aiAnalysis:
       # Without one, it can be entered in the web GUI.
       existingSecret: ""
       apiKey: ""
-    isstech:
-      allowed: false
     copilot:
       allowed: false
 

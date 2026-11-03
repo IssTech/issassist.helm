@@ -14,7 +14,7 @@ Deployment's list leaves Bob out). Slice 4 must get it to the run pods in
 */}}
 {{- if .Values.api.enabled }}
 {{- $providers := (.Values.aiAnalysis | default dict).providers | default dict }}
-{{- range $id := list "local" "claude" "gemini" "bob" "isstech" "copilot" }}
+{{- range $id := list "local" "claude" "gemini" "bob" "copilot" }}
 {{- $p := get $providers $id }}
 {{- if and (kindIs "map" $p) $p.apiKey }}
 ---
