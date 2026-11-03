@@ -49,6 +49,7 @@ data:
   IA_AI_MAX_DAILY_CAP_EUR: {{ $cap | toString | quote }}
   IA_AI_MAX_CONCURRENT: {{ $concurrent | toString | quote }}
   IA_AI_DEBUG_WIZARD: {{ ternary "true" "false" (eq (toString $wizard.enabled) "true") | quote }}
+  {{- $capDefaults := dict "claude" (list 5 20) "gemini" (list 5 20) "bob" (list 20 50) }}
   {{- range $id := list "local" "claude" "gemini" "bob" "copilot" }}
   {{- $p := get $providers $id | default dict }}
   IA_AI_{{ upper $id }}_ALLOWED: {{ ternary "true" "false" (eq (toString $p.allowed) "true") | quote }}
@@ -56,7 +57,24 @@ data:
   {{- if $secret }}
   IA_AI_{{ upper $id }}_SECRET_NAME: {{ $secret | quote }}
   {{- end }}
+  {{- /* The cap per provider (mockup §8). The fallback is values.yaml's own default,
+         for a release upgraded with --reuse-values from before these keys existed;
+         not `default`, which reads 0 as unset. */}}
+  {{- $fallback := get $capDefaults $id | default (list 0 0) }}
+  IA_AI_{{ upper $id }}_DAILY_CAP: {{ ternary $p.dailyCap (index $fallback 0) (and (hasKey $p "dailyCap") (not (kindIs "invalid" $p.dailyCap))) | toString | quote }}
+  IA_AI_{{ upper $id }}_DAILY_CAP_MAX: {{ ternary $p.dailyCapMax (index $fallback 1) (and (hasKey $p "dailyCapMax") (not (kindIs "invalid" $p.dailyCapMax))) | toString | quote }}
   {{- end }}
   IA_AI_LOCAL_ENDPOINT: {{ $endpoint | quote }}
   IA_AI_LOCAL_MODEL: {{ $local.model | default "" | quote }}
+  {{- /* IBM Bob's run pods (slice 4). `default` is not used for numbers: Sprig treats
+         0 as empty, and a limit of 0 is a choice. */}}
+  {{- $bob := $providers.bob | default dict }}
+  IA_AI_BOB_NAMESPACE: {{ $bob.namespace | default "ai-bob-runs" | quote }}
+  IA_AI_BOB_IMAGE: {{ $bob.image | default "" | quote }}
+  IA_AI_BOB_KEYPROXY_IMAGE: {{ $bob.keyproxyImage | default "" | quote }}
+  IA_AI_BOB_GATEWAY_URL: {{ $bob.gatewayUrl | default "https://api.us-east.bob.ibm.com" | quote }}
+  IA_AI_BOB_REGION: {{ $bob.region | default "" | quote }}
+  IA_AI_BOB_TIMEOUT_SECONDS: {{ ternary $bob.timeoutSeconds 180 (hasKey $bob "timeoutSeconds") | toString | quote }}
+  IA_AI_BOB_MAX_TURNS: {{ ternary $bob.maxTurns 3 (hasKey $bob "maxTurns") | toString | quote }}
+  IA_AI_BOB_MAX_COST_PER_RUN_BOBCOINS: {{ ternary $bob.maxCostPerRunBobcoins 5 (hasKey $bob "maxCostPerRunBobcoins") | toString | quote }}
 {{- end }}

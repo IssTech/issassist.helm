@@ -82,7 +82,8 @@ global:
 #   kubectl create secret generic issassist-ai-anthropic --from-literal=api-key=…
 # Only https endpoints are accepted; there is no switch for plain HTTP.
 aiAnalysis:
-  # Highest daily cap, EUR, an operator may set for providers outside this cluster.
+  # The ceiling on all providers priced in EUR together, per UTC day. Each provider
+  # also has its own cap below (dailyCap / dailyCapMax).
   maxDailyCapEur: 20
   # Analyses running at once.
   maxConcurrent: 2
@@ -100,6 +101,10 @@ aiAnalysis:
   #   apiKey: the key itself; the chart renders the Secret. Helm keeps this value
   #     in plaintext in the release (`helm get values`), so prefer existingSecret.
   #     When both are set, apiKey is used.
+  # Each provider's daily cap is in its own unit (EUR, or bobcoins for IBM Bob):
+  #   dailyCap: the default, until an operator sets another in Settings > AI analysis;
+  #   dailyCapMax: the highest an operator may set. 0 means nothing may be spent.
+  # The values are expected to change over time; they live here, not in the code.
   providers:
     # An OpenAI-compatible endpoint (Ollama, vLLM, the IssAssist LLM, Azure
     # OpenAI). Local only when the host is a cluster service name.
@@ -109,6 +114,9 @@ aiAnalysis:
       model: "qwen2.5:14b"
       existingSecret: ""    # optional bearer token, key "api-key"
       apiKey: ""
+      # In this cluster: no cap, tokens are counted and shown.
+      dailyCap: 0
+      dailyCapMax: 0
     claude:
       allowed: false
       # Naming a Secret here means the installation owns Claude's key: the web GUI
@@ -116,16 +124,54 @@ aiAnalysis:
       # that Secret does not exist yet. Empty by default so either way works.
       existingSecret: ""    # e.g. "issassist-ai-anthropic", key "api-key"
       apiKey: ""
+      dailyCap: 5           # EUR
+      dailyCapMax: 20
     gemini:
       allowed: false
+      dailyCap: 5           # EUR
+      dailyCapMax: 20
+    # IBM Bob (slice 4): every analysis runs in a fresh pod of its own, in
+    # `namespace`, created by the API and deleted when it ends. Needs
+    # clusterScoped.create (the chart creates that namespace, its network policy and
+    # the API's permissions there). The operator must accept IBM's licence terms in
+    # the web GUI before Bob can be switched on.
     bob:
       allowed: false
-      # Bob's key is for its per-run pods (slice 4) and is never mounted into the API
-      # pod. Set here, it is rendered as a Secret in this namespace and only its name
-      # is given to the API, so the web GUI shows it as set by the installation.
-      # Without one, it can be entered in the web GUI.
+      # Bob's key is for its run pods and is never mounted into the API pod.
+      #   existingSecret: a Secret you created in `namespace` (not this one), key
+      #     "api-key"; the run pods read it, the API knows only its name.
+      #   apiKey: the chart renders it as issassist-ai-bob-key in `namespace`.
+      # Without either, it can be entered in the web GUI.
       existingSecret: ""
       apiKey: ""
+      # Shown in the web GUI. Where Bob runs follows the Bob instance the key
+      # belongs to; this does not change it.
+      region: "us-east"
+      namespace: "ai-bob-runs"
+      # The issassist-bob-runner image (issassist-api docker/bob-runner), pinned by
+      # digest: ghcr.io/isstech/issassist-bob-runner@sha256:<digest>. The run
+      # namespace admits pods of exactly this image and nothing else. Empty: Bob is
+      # not set up, and every run says so.
+      image: ""
+      # The key sidecar (mockup §9): ghcr.io/isstech/issassist-bob-keyproxy@sha256:<digest>
+      # (issassist-api docker/bob-keyproxy). Bob gets a fake key; this container
+      # holds the real one and forwards Bob's three calls to gatewayUrl only.
+      keyproxyImage: ""
+      # Where Bob's calls go, through the sidecar: IBM's gateway for the region of the
+      # key's Bob instance (us-east now), or a customer's own Bob. https only.
+      gatewayUrl: "https://api.us-east.bob.ibm.com"
+      # A run pod is stopped after this long (30 to 900).
+      timeoutSeconds: 180
+      maxTurns: 3
+      # Bob is paid in bobcoins, not EUR. A run never goes past the cap: no one can
+      # confirm past it. dailyCapMax 0 means unpriced, and Bob cannot be switched on.
+      dailyCap: 20          # bobcoins
+      dailyCapMax: 50
+      # The most one run may spend; it gets at most what is left of the day's limit.
+      maxCostPerRunBobcoins: 5
+      # What a run pod may reach: "internet-443" is HTTPS to addresses outside the
+      # cluster's private ranges, and nothing inside the cluster.
+      egress: "internet-443"
     copilot:
       allowed: false
 

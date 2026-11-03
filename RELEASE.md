@@ -28,6 +28,77 @@ still has an `isstech` block renders as before and the block is ignored: no
 
 **Where the detail is.** `issassist-api` `docs/projects/2026-10-29-ai-analysis-api.md`.
 
+### `aiAnalysis.providers.<id>.dailyCap` / `dailyCapMax`: a daily cap per AI provider
+
+**What it is.** Each AI provider gets its own daily cap, in its own unit. Operators
+change it in Settings › AI analysis, within the maximum set here.
+
+**Where it is.**
+
+| Provider | `dailyCap` | `dailyCapMax` |
+|---|---|---|
+| `claude` | 5 | 20 (EUR) |
+| `gemini` | 5 | 20 (EUR) |
+| `bob` | 20 | 50 (bobcoins) |
+| `local` | 0 | 0 (no cap; tokens are counted) |
+
+**What changed for them.**
+- New.
+- **`bob.dailyCapBobcoins` is replaced by `bob.dailyCap` / `bob.dailyCapMax`.**
+- `aiAnalysis.maxDailyCapEur` stays: it is the ceiling on all EUR providers together.
+- A release upgraded with `--reuse-values` from before these keys existed gets the
+  defaults above.
+
+**Where the detail is.** `issassist-api/docs/projects/2026-10-29-ai-analysis-api.md`,
+"a daily cap per LLM".
+
+### `aiAnalysis.providers.bob`: IBM Bob runs, one pod per analysis
+
+**What it is.** IBM Bob can now explain a Storage Protect alert. Each analysis runs in a
+fresh pod of its own in a separate namespace, which the API creates and deletes. The chart
+creates that namespace, what its pods may reach, and the API's permission to start pods
+there. The API also gets a ServiceAccount of its own, named `api`, instead of the
+namespace's `default`.
+
+**Where it is.** `aiAnalysis.providers.bob` in `values.yaml`:
+
+| Key | Default | Meaning |
+|---|---|---|
+| `allowed` | `false` | Only `true` turns Bob on for this site. |
+| `image` | `""` | The `ghcr.io/isstech/issassist-bob-runner` image, **pinned by digest** (`…@sha256:…`); a tag alone is refused. Empty: Bob is not set up, and every run says so. |
+| `keyproxyImage` | `""` | The key sidecar, `ghcr.io/isstech/issassist-bob-keyproxy`, **by digest**. It holds the real key, so that Bob never does. |
+| `gatewayUrl` | `https://api.us-east.bob.ibm.com` | Where Bob's calls go, through the sidecar. Use the gateway of the region of the key's Bob instance, or of a customer's own Bob. https only. |
+| `dailyCap` / `dailyCapMax` | `20` / `50` | Bob's daily cap in bobcoins, as for every provider above. **A maximum of 0 means Bob cannot be switched on.** |
+| `maxCostPerRunBobcoins` | `5` | The most one analysis may spend. |
+| `namespace` | `ai-bob-runs` | Where the run pods are. Not the release's own namespace, not `default` or `kube-*`. |
+| `timeoutSeconds` | `180` | A run pod is stopped after this. 30 to 900. |
+| `maxTurns` | `3` | Passed to Bob. |
+| `region` | `us-east` | Shown in the web GUI; Bob runs where the key's Bob instance is. |
+| `egress` | `internet-443` | Run pods reach DNS and HTTPS outside the cluster, and nothing inside it. |
+| `existingSecret` / `apiKey` | `""` | The key. **`existingSecret` must now be a Secret in `namespace`**, not in the release's namespace. `apiKey` is rendered there as `issassist-ai-bob-key`. |
+
+**What changed for them.**
+- New, and off unless `allowed: true` and `clusterScoped.create: true` (the default).
+- **To run Bob, set `allowed: true`, plus `image` and `keyproxyImage`, both by digest.** Then set
+  the key here or in the web GUI, and accept IBM's licence terms in Settings › AI analysis.
+- **A Bob `existingSecret` created in the release's namespace before this release must be
+  created again in `ai-bob-runs`.**
+- The API pod now runs as the ServiceAccount `api`. Nothing else about it changes.
+- The run namespace admits only IssAssist's own Bob run pods:
+  - the two configured images (Bob, and the key sidecar), each started by its own
+    entrypoint, with its own settings, and the files and folders IssAssist gives
+    it, mounted where IssAssist mounts them;
+  - pods that choose no node, scheduler, priority or runtime of their own.
+
+  A pod an operator writes by hand is refused there, on purpose. It needs
+  Kubernetes 1.30 or later.
+- The run namespace's quota now limits CPU as well as memory. A pod an operator writes by hand is refused
+  there; that is on purpose. It also caps the run pods at `aiAnalysis.maxConcurrent` + 1
+  and their memory. **Needs Kubernetes 1.30 or later** (ValidatingAdmissionPolicy).
+
+**Where the detail is.** [`docs/projects/2026-11-03-ai-bob-runs.md`](docs/projects/2026-11-03-ai-bob-runs.md)
+and, for the API side, `issassist-api/docs/projects/2026-10-29-ai-analysis-api.md`.
+
 ### `api.avepointRunCheck` and `api.postgres.readonlyRole`: a daily check of the AvePoint collection
 
 **What it is.** Every morning, 15 minutes after the AvePoint collection, a Job checks that

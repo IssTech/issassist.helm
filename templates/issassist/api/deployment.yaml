@@ -18,6 +18,7 @@ spec:
       labels:
        app.kubernetes.io/name: api
     spec:
+      serviceAccountName: api
       dnsPolicy: ClusterFirst
       restartPolicy: Always
       imagePullSecrets:
