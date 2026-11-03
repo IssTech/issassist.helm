@@ -1,0 +1,195 @@
+{{/*
+The read-only Postgres login `api.avepointRunCheck` uses. The chart has always
+generated its password (templates/accounts/api-postgres.yaml) but nothing ever
+created the role, so the check failed every morning on "password authentication
+failed for user api-readonly".
+
+Run after every install and upgrade, so the role exists and its password is the
+one in the Secret, without anyone doing it by hand.
+
+* Grants: CONNECT on `api`, USAGE on the schema `avepoint`, and SELECT on the
+  columns avepoint-run-check.yaml reads, named one by one. Not the other tables
+  in `avepoint` (`credentials` holds the AvePoint partner secret), not
+  `raw_responses.payload` (AvePoint's replies verbatim), and not tables the API
+  adds later: a wider grant has to show up in this file's diff. Every run first
+  revokes whatever else the role holds in `avepoint`. No write.
+* Only a role this Job created is changed. It is marked with a comment; an
+  existing role without that mark, or one that is a member of another role, is
+  refused rather than reshaped.
+* Neither password reaches a command line or a log: both come in as env vars,
+  psql reads the read-only one with \getenv, and the session sets
+  log_statement and log_min_error_statement so that neither a DDL audit log nor
+  a failing ALTER ROLE writes it to the server log.
+* Over TLS, verifying the server against the IssAssist CA.
+* It never fails the release. Helm waits for this Job (5 minutes by default), so
+  on a fresh install it waits at most 4 minutes for the API to create the
+  tables, and otherwise ends with a warning; the next upgrade sets the grants.
+
+Read through `default dict`: `--reuse-values` rebases on the previous release's
+values, where this key did not exist yet. Only `enabled: true` turns it on.
+*/}}
+{{- $role := (.Values.api.postgres | default dict).readonlyRole | default dict }}
+{{- if and .Values.api.enabled (eq (toString $role.enabled) "true") }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: api-postgres-readonly-role
+  labels:
+    app.kubernetes.io/name: api-postgres-readonly-role
+data:
+  # No secret in here: the password is a psql variable read from the env.
+  role.sql: |
+    \set ON_ERROR_STOP on
+    \getenv ro_user RO_USER
+    \getenv ro_password RO_PASSWORD
+    -- The ALTER ROLE below carries the password: keep it out of the server log
+    -- whatever log_statement the server runs with, and when it fails.
+    SET log_statement = 'none';
+    SET log_min_error_statement = panic;
+    -- Only a role this Job made. The name comes from a Secret; anyone editing it
+    -- must not be able to point this Job at another role and strip or reset it.
+    SELECT NOT EXISTS (SELECT FROM pg_roles WHERE rolname = :'ro_user')
+        OR EXISTS (SELECT FROM pg_roles r
+                   WHERE r.rolname = :'ro_user'
+                     AND shobj_description(r.oid, 'pg_authid') = 'managed by issassist.helm: api-postgres-readonly-role'
+                     AND NOT EXISTS (SELECT FROM pg_auth_members m WHERE m.member = r.oid))
+      AS ours \gset
+    \if :ours
+    \else
+    DO $$BEGIN RAISE EXCEPTION 'the role named in api-postgres-readonly-auth exists and was not created by this chart, or is a member of another role; refusing to change it'; END$$;
+    \endif
+    SELECT format('CREATE ROLE %I', :'ro_user')
+      WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = :'ro_user') \gexec
+    COMMENT ON ROLE :"ro_user" IS 'managed by issassist.helm: api-postgres-readonly-role';
+    ALTER ROLE :"ro_user" LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION
+      NOBYPASSRLS CONNECTION LIMIT 3 PASSWORD :'ro_password';
+    GRANT CONNECT ON DATABASE api TO :"ro_user";
+    GRANT USAGE ON SCHEMA avepoint TO :"ro_user";
+    REVOKE ALL ON ALL TABLES IN SCHEMA avepoint FROM :"ro_user";
+    -- Exactly the columns avepoint-run-check.yaml reads.
+    GRANT SELECT (customer_id, customer_name, record_type, service_name, tenant_id, collected_at)
+      ON avepoint.snapshots TO :"ro_user";
+    GRANT SELECT (kind, http_status, attempt, collected_at)
+      ON avepoint.raw_responses TO :"ro_user";
+    SELECT format('%s: role ready; reads 10 columns of avepoint.snapshots and avepoint.raw_responses', :'ro_user')
+      AS result \gset
+    \echo :result
+  run.sh: |
+    #!/bin/sh
+    set -u
+    # Up to 4 minutes for the schema; Helm gives up on the whole release at 5.
+    # WAIT_SECONDS exists for scripts/check_readonly_role.sh, not for operators.
+    max=${WAIT_SECONDS:-240}
+    waited=0
+    until [ "$(psql -X -t -A -c "SELECT to_regclass('avepoint.snapshots') IS NOT NULL
+                                    AND to_regclass('avepoint.raw_responses') IS NOT NULL;" 2>/tmp/err)" = "t" ]; do
+      if [ "$waited" -ge "$max" ]; then
+        echo "tables in schema avepoint still missing after $((max / 60)) min; grants will be set on the next upgrade"
+        sed 's/^/    /' /tmp/err | head -3
+        exit 0
+      fi
+      [ "$waited" -eq 0 ] && echo "tables in schema avepoint not there yet (the API has not migrated); waiting…"
+      sleep 10
+      waited=$((waited + 10))
+    done
+    if ! psql -X -q -f /scripts/role.sql 2>/tmp/err; then
+      echo "ERROR: could not set up the role; avepoint-run-check will fail until it is fixed."
+      sed 's/^/    /' /tmp/err | head -3
+      exit 0
+    fi
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: api-postgres-readonly-role
+  labels:
+    app.kubernetes.io/name: api-postgres-readonly-role
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    # Kept after it ends, so its log line can be read until the next upgrade.
+    "helm.sh/hook-delete-policy": before-hook-creation
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 280
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: api-postgres-readonly-role
+    spec:
+      restartPolicy: Never
+      # Talks to Postgres only, never to the Kubernetes API.
+      automountServiceAccountToken: false
+      # Required by the namespace's "restricted" PodSecurity level.
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: role
+          image: {{ .Values.api.postgres.image | quote }}
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/sh", "/scripts/run.sh"]
+          env:
+            - name: PGHOST
+              value: "api-postgres"
+            - name: PGDATABASE
+              value: "api"
+            - name: PGSSLMODE
+              value: "verify-full"
+            - name: PGSSLROOTCERT
+              value: "/etc/issassist/ca.crt"
+            - name: PGCONNECT_TIMEOUT
+              value: "10"
+            - name: HOME
+              value: "/tmp"
+            - name: PGUSER
+              valueFrom:
+                secretKeyRef:
+                  name: api-postgres-auth
+                  key: username
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: api-postgres-auth
+                  key: password
+            - name: RO_USER
+              valueFrom:
+                secretKeyRef:
+                  name: api-postgres-readonly-auth
+                  key: username
+            - name: RO_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: api-postgres-readonly-auth
+                  key: password
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+            - name: issassist-ca-cert
+              mountPath: "/etc/issassist/ca.crt"
+              subPath: "tls.crt"
+            - name: tmp
+              mountPath: /tmp
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 999
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 128Mi
+      volumes:
+        - name: scripts
+          configMap:
+            name: api-postgres-readonly-role
+            defaultMode: 0555
+        - name: issassist-ca-cert
+          secret:
+            secretName: issassist-ca-cert
+        - name: tmp
+          emptyDir: {}
+{{- end }}

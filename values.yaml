@@ -168,6 +168,21 @@ api:
     image: 'postgres:17'
     storageClass: ~
     volumeSize: "10Gi"
+    # A login that can read the schema `avepoint` and nothing else, for
+    # `avepointRunCheck` below. A Job run by every install and upgrade creates
+    # it, or resets its password from `api-postgres-readonly-auth`. Turning this
+    # off later leaves the role in the database.
+    readonlyRole:
+      enabled: false
+
+  # Every morning, check that the AvePoint collection wrote rows that day. The
+  # verdict is the Job's exit status: a Failed job is a failed collection (or a
+  # check that could not read the database, which it says). Needs
+  # `postgres.readonlyRole.enabled`.
+  avepointRunCheck:
+    enabled: false
+    # UTC, 15 minutes after the 06:00 UTC collection (`avepoint.sync_time_utc`).
+    schedule: "15 6 * * *"
 
   valkey:
     storageClass: ~
