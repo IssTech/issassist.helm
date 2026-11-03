@@ -136,8 +136,10 @@ aiAnalysis:
       # belongs to; this does not change it.
       region: "us-east"
       namespace: "ai-bob-runs"
-      # The issassist-bob-runner image (issassist-api docker/bob-runner). Empty:
-      # Bob is not set up, and every run says so.
+      # The issassist-bob-runner image (issassist-api docker/bob-runner), pinned by
+      # digest: ghcr.io/isstech/issassist-bob-runner@sha256:<digest>. The run
+      # namespace admits pods of exactly this image and nothing else. Empty: Bob is
+      # not set up, and every run says so.
       image: ""
       # A run pod is stopped after this long (30 to 900).
       timeoutSeconds: 180

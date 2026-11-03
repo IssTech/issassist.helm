@@ -95,4 +95,23 @@ expect "Bob's limit renders what was set"             'IA_AI_BOB_DAILY_CAP_BOBCO
 expect "a per-run limit of 0 renders 0, not 5"        'IA_AI_BOB_MAX_COST_PER_RUN_BOBCOINS: "0"' -- --set aiAnalysis.providers.bob.maxCostPerRunBobcoins=0
 expect "Bob gone (older release) renders its defaults" 'IA_AI_BOB_NAMESPACE: "ai-bob-runs"' -- --set aiAnalysis.providers.bob=null
 expect "the Bob image reaches the API"                 'IA_AI_BOB_IMAGE: "ghcr.io/isstech/issassist-bob-runner:1"' -- --set aiAnalysis.providers.bob.image=ghcr.io/isstech/issassist-bob-runner:1
+# Security review of slice 4 (2026/11/03): the admission policy, the quota, the ranges.
+digest="sha256:$(printf '%064d' 7)"
+pinned=(--set aiAnalysis.providers.bob.allowed=true --set "aiAnalysis.providers.bob.image=ghcr.io/isstech/issassist-bob-runner@${digest}")
+expect "an image by tag only fails"                     'pinned by digest' -- "${bob[@]}" --set aiAnalysis.providers.bob.image=ghcr.io/isstech/issassist-bob-runner:1.5.0-3
+expect "the pod policy admits only the pinned image"    "variables.c.image == \"ghcr.io/isstech/issassist-bob-runner@${digest}\"" -- "${pinned[@]}"
+expect_section "the pod policy refuses a command"       ValidatingAdmissionPolicy issassist-bob-run-pods-ai-bob-runs '!has\(variables.c.command\)' -- "${pinned[@]}"
+expect_section "the pod policy allows one env var only" ValidatingAdmissionPolicy issassist-bob-run-pods-ai-bob-runs "size\(variables.c.env\) == 1 && variables.c.env\[0\].name == 'BOB_API_KEY'" -- "${pinned[@]}"
+expect_section "the pod policy knows Helm's key name"   ValidatingAdmissionPolicy issassist-bob-run-pods-ai-bob-runs '== "issassist-ai-bob"\)' -- "${pinned[@]}" --set aiAnalysis.providers.bob.existingSecret=issassist-ai-bob
+expect_section "the pod deadline follows timeoutSeconds" ValidatingAdmissionPolicy issassist-bob-run-pods-ai-bob-runs 'activeDeadlineSeconds <= 240' -- "${pinned[@]}" --set aiAnalysis.providers.bob.timeoutSeconds=240
+expect_section "the pod policy denies, not warns"       ValidatingAdmissionPolicyBinding issassist-bob-run-pods-ai-bob-runs 'validationActions: \["Deny"\]' -- "${pinned[@]}"
+expect_section "the Secret policy is for the API only"  ValidatingAdmissionPolicy issassist-bob-run-secrets-ai-bob-runs 'request.userInfo.username == "system:serviceaccount:issassist-x:api"' -- "${pinned[@]}" --namespace issassist-x
+expect_section "the Secret policy covers delete"        ValidatingAdmissionPolicy issassist-bob-run-secrets-ai-bob-runs 'operations: \["CREATE", "UPDATE", "DELETE"\]' -- "${pinned[@]}"
+expect_section "the API may touch only bob-run-* Secrets" ValidatingAdmissionPolicy issassist-bob-run-secrets-ai-bob-runs "startsWith\('bob-run-'\)" -- "${pinned[@]}"
+expect "a timeout over 900 s fails"                     'timeoutSeconds must be from 30 to 900' -- "${bob[@]}" --set aiAnalysis.providers.bob.timeoutSeconds=901
+expect_section "run pods are capped at maxConcurrent + 1" ResourceQuota bob-runs 'pods: "4"' -- "${bob[@]}" --set aiAnalysis.maxConcurrent=3
+expect_section "and so is their memory"                 ResourceQuota bob-runs 'limits.memory: "2048Mi"' -- "${bob[@]}" --set aiAnalysis.maxConcurrent=3
+for range in '0\.0\.0\.0/8' '192\.0\.0\.0/24' '198\.18\.0\.0/15'; do
+  expect_section "run pods cannot reach ${range//\\/}"     NetworkPolicy bob-runs "- ${range}" -- "${bob[@]}"
+done
 exit $fail

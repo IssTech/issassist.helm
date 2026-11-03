@@ -25,11 +25,11 @@ namespace's `default`.
 | Key | Default | Meaning |
 |---|---|---|
 | `allowed` | `false` | Only `true` turns Bob on for this site. |
-| `image` | `""` | The `ghcr.io/isstech/issassist-bob-runner` image. Empty: Bob is not set up, and every run says so. |
+| `image` | `""` | The `ghcr.io/isstech/issassist-bob-runner` image, **pinned by digest** (`…@sha256:…`); a tag alone is refused. Empty: Bob is not set up, and every run says so. |
 | `dailyCapBobcoins` | `0` | Bob is paid in bobcoins. Its own daily limit; **0 means Bob cannot be switched on.** |
 | `maxCostPerRunBobcoins` | `5` | The most one analysis may spend. |
 | `namespace` | `ai-bob-runs` | Where the run pods are. Not the release's own namespace, not `default` or `kube-*`. |
-| `timeoutSeconds` | `180` | A run pod is stopped after this. |
+| `timeoutSeconds` | `180` | A run pod is stopped after this. 30 to 900. |
 | `maxTurns` | `3` | Passed to Bob. |
 | `region` | `us-east` | Shown in the web GUI; Bob runs where the key's Bob instance is. |
 | `egress` | `internet-443` | Run pods reach DNS and HTTPS outside the cluster, and nothing inside it. |
@@ -42,6 +42,10 @@ namespace's `default`.
 - **A Bob `existingSecret` created in the release's namespace before this release must be
   created again in `ai-bob-runs`.**
 - The API pod now runs as the ServiceAccount `api`. Nothing else about it changes.
+- The run namespace admits only IssAssist's own Bob run pods: the configured image,
+  started the one way IssAssist starts it. A pod an operator writes by hand is refused
+  there; that is on purpose. It also caps the run pods at `aiAnalysis.maxConcurrent` + 1
+  and their memory. **Needs Kubernetes 1.30 or later** (ValidatingAdmissionPolicy).
 
 **Where the detail is.** [`docs/projects/2026-11-03-ai-bob-runs.md`](docs/projects/2026-11-03-ai-bob-runs.md)
 and, for the API side, `issassist-api/docs/projects/2026-10-29-ai-analysis-api.md`.
