@@ -90,8 +90,18 @@ expect "the run namespace cannot be the release's"     'must not be the release'
 expect "kube-system cannot be the run namespace"      'namespace of its own' -- "${bob[@]}" --set aiAnalysis.providers.bob.namespace=kube-system
 expect "default cannot be the run namespace"          'namespace of its own' -- "${bob[@]}" --set aiAnalysis.providers.bob.namespace=default --namespace other
 expect "an unknown egress mode fails"                  'egress must be' -- "${bob[@]}" --set aiAnalysis.providers.bob.egress=open
-expect "Bob's limit defaults to 0 (unpriced: off)"    'IA_AI_BOB_DAILY_CAP_BOBCOINS: "0"' --
-expect "Bob's limit renders what was set"             'IA_AI_BOB_DAILY_CAP_BOBCOINS: "20"' -- --set aiAnalysis.providers.bob.dailyCapBobcoins=20
+# Mockup §8: a daily cap per provider, in its own unit.
+expect "Claude's cap defaults to 5 EUR"               'IA_AI_CLAUDE_DAILY_CAP: "5"' --
+expect "Claude's maximum defaults to 20 EUR"          'IA_AI_CLAUDE_DAILY_CAP_MAX: "20"' --
+expect "Gemini's cap defaults to 5 EUR"               'IA_AI_GEMINI_DAILY_CAP: "5"' --
+expect "Bob's cap defaults to 20 bobcoins"            'IA_AI_BOB_DAILY_CAP: "20"' --
+expect "Bob's maximum defaults to 50 bobcoins"        'IA_AI_BOB_DAILY_CAP_MAX: "50"' --
+expect "the local LLM has no cap"                     'IA_AI_LOCAL_DAILY_CAP_MAX: "0"' --
+expect "a cap of 0 renders 0, not the fallback"       'IA_AI_CLAUDE_DAILY_CAP: "0"' -- --set aiAnalysis.providers.claude.dailyCap=0
+expect "a maximum renders what was set"               'IA_AI_BOB_DAILY_CAP_MAX: "80"' -- --set aiAnalysis.providers.bob.dailyCapMax=80
+expect "Claude gone (older release) falls back to 5"  'IA_AI_CLAUDE_DAILY_CAP: "5"' -- --set aiAnalysis.providers.claude=null
+expect "Bob gone (older release) falls back to 50"    'IA_AI_BOB_DAILY_CAP_MAX: "50"' -- --set aiAnalysis.providers.bob=null
+expect_not "the old Bob-only cap is gone"             'DAILY_CAP_BOBCOINS' --
 expect "a per-run limit of 0 renders 0, not 5"        'IA_AI_BOB_MAX_COST_PER_RUN_BOBCOINS: "0"' -- --set aiAnalysis.providers.bob.maxCostPerRunBobcoins=0
 expect "Bob gone (older release) renders its defaults" 'IA_AI_BOB_NAMESPACE: "ai-bob-runs"' -- --set aiAnalysis.providers.bob=null
 expect "the Bob image reaches the API"                 'IA_AI_BOB_IMAGE: "ghcr.io/isstech/issassist-bob-runner:1"' -- --set aiAnalysis.providers.bob.image=ghcr.io/isstech/issassist-bob-runner:1

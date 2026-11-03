@@ -82,7 +82,8 @@ global:
 #   kubectl create secret generic issassist-ai-anthropic --from-literal=api-key=…
 # Only https endpoints are accepted; there is no switch for plain HTTP.
 aiAnalysis:
-  # Highest daily cap, EUR, an operator may set for providers outside this cluster.
+  # The ceiling on all providers priced in EUR together, per UTC day. Each provider
+  # also has its own cap below (dailyCap / dailyCapMax).
   maxDailyCapEur: 20
   # Analyses running at once.
   maxConcurrent: 2
@@ -100,6 +101,10 @@ aiAnalysis:
   #   apiKey: the key itself; the chart renders the Secret. Helm keeps this value
   #     in plaintext in the release (`helm get values`), so prefer existingSecret.
   #     When both are set, apiKey is used.
+  # Each provider's daily cap is in its own unit (EUR, or bobcoins for IBM Bob):
+  #   dailyCap: the default, until an operator sets another in Settings > AI analysis;
+  #   dailyCapMax: the highest an operator may set. 0 means nothing may be spent.
+  # The values are expected to change over time; they live here, not in the code.
   providers:
     # An OpenAI-compatible endpoint (Ollama, vLLM, the IssAssist LLM, Azure
     # OpenAI). Local only when the host is a cluster service name.
@@ -109,6 +114,9 @@ aiAnalysis:
       model: "qwen2.5:14b"
       existingSecret: ""    # optional bearer token, key "api-key"
       apiKey: ""
+      # In this cluster: no cap, tokens are counted and shown.
+      dailyCap: 0
+      dailyCapMax: 0
     claude:
       allowed: false
       # Naming a Secret here means the installation owns Claude's key: the web GUI
@@ -116,8 +124,12 @@ aiAnalysis:
       # that Secret does not exist yet. Empty by default so either way works.
       existingSecret: ""    # e.g. "issassist-ai-anthropic", key "api-key"
       apiKey: ""
+      dailyCap: 5           # EUR
+      dailyCapMax: 20
     gemini:
       allowed: false
+      dailyCap: 5           # EUR
+      dailyCapMax: 20
     # IBM Bob (slice 4): every analysis runs in a fresh pod of its own, in
     # `namespace`, created by the API and deleted when it ends. Needs
     # clusterScoped.create (the chart creates that namespace, its network policy and
@@ -144,9 +156,10 @@ aiAnalysis:
       # A run pod is stopped after this long (30 to 900).
       timeoutSeconds: 180
       maxTurns: 3
-      # Bob is paid in bobcoins, not EUR. Its own daily limit, which no one can
-      # confirm past. 0 means unpriced, and then Bob cannot be switched on.
-      dailyCapBobcoins: 0
+      # Bob is paid in bobcoins, not EUR. A run never goes past the cap: no one can
+      # confirm past it. dailyCapMax 0 means unpriced, and Bob cannot be switched on.
+      dailyCap: 20          # bobcoins
+      dailyCapMax: 50
       # The most one run may spend; it gets at most what is left of the day's limit.
       maxCostPerRunBobcoins: 5
       # What a run pod may reach: "internet-443" is HTTPS to addresses outside the
