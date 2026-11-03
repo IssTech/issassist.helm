@@ -59,4 +59,14 @@ data:
   {{- end }}
   IA_AI_LOCAL_ENDPOINT: {{ $endpoint | quote }}
   IA_AI_LOCAL_MODEL: {{ $local.model | default "" | quote }}
+  {{- /* IBM Bob's run pods (slice 4). `default` is not used for numbers: Sprig treats
+         0 as empty, and a limit of 0 is a choice. */}}
+  {{- $bob := $providers.bob | default dict }}
+  IA_AI_BOB_NAMESPACE: {{ $bob.namespace | default "ai-bob-runs" | quote }}
+  IA_AI_BOB_IMAGE: {{ $bob.image | default "" | quote }}
+  IA_AI_BOB_REGION: {{ $bob.region | default "" | quote }}
+  IA_AI_BOB_TIMEOUT_SECONDS: {{ ternary $bob.timeoutSeconds 180 (hasKey $bob "timeoutSeconds") | toString | quote }}
+  IA_AI_BOB_MAX_TURNS: {{ ternary $bob.maxTurns 3 (hasKey $bob "maxTurns") | toString | quote }}
+  IA_AI_BOB_DAILY_CAP_BOBCOINS: {{ ternary $bob.dailyCapBobcoins 0 (hasKey $bob "dailyCapBobcoins") | toString | quote }}
+  IA_AI_BOB_MAX_COST_PER_RUN_BOBCOINS: {{ ternary $bob.maxCostPerRunBobcoins 5 (hasKey $bob "maxCostPerRunBobcoins") | toString | quote }}
 {{- end }}

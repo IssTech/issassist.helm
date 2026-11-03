@@ -12,6 +12,40 @@ in `docs/projects/<date>-<slug>.md`, linked from the entry.
 
 ## Next chart release — in development
 
+### `aiAnalysis.providers.bob`: IBM Bob runs, one pod per analysis
+
+**What it is.** IBM Bob can now explain a Storage Protect alert. Each analysis runs in a
+fresh pod of its own in a separate namespace, which the API creates and deletes. The chart
+creates that namespace, what its pods may reach, and the API's permission to start pods
+there. The API also gets a ServiceAccount of its own, named `api`, instead of the
+namespace's `default`.
+
+**Where it is.** `aiAnalysis.providers.bob` in `values.yaml`:
+
+| Key | Default | Meaning |
+|---|---|---|
+| `allowed` | `false` | Only `true` turns Bob on for this site. |
+| `image` | `""` | The `ghcr.io/isstech/issassist-bob-runner` image. Empty: Bob is not set up, and every run says so. |
+| `dailyCapBobcoins` | `0` | Bob is paid in bobcoins. Its own daily limit; **0 means Bob cannot be switched on.** |
+| `maxCostPerRunBobcoins` | `5` | The most one analysis may spend. |
+| `namespace` | `ai-bob-runs` | Where the run pods are. Not the release's own namespace, not `default` or `kube-*`. |
+| `timeoutSeconds` | `180` | A run pod is stopped after this. |
+| `maxTurns` | `3` | Passed to Bob. |
+| `region` | `us-east` | Shown in the web GUI; Bob runs where the key's Bob instance is. |
+| `egress` | `internet-443` | Run pods reach DNS and HTTPS outside the cluster, and nothing inside it. |
+| `existingSecret` / `apiKey` | `""` | The key. **`existingSecret` must now be a Secret in `namespace`**, not in the release's namespace. `apiKey` is rendered there as `issassist-ai-bob-key`. |
+
+**What changed for them.**
+- New, and off unless `allowed: true` and `clusterScoped.create: true` (the default).
+- **To run Bob, set `allowed: true`, `image` and a `dailyCapBobcoins` above 0.** Then set
+  the key here or in the web GUI, and accept IBM's licence terms in Settings › AI analysis.
+- **A Bob `existingSecret` created in the release's namespace before this release must be
+  created again in `ai-bob-runs`.**
+- The API pod now runs as the ServiceAccount `api`. Nothing else about it changes.
+
+**Where the detail is.** [`docs/projects/2026-11-03-ai-bob-runs.md`](docs/projects/2026-11-03-ai-bob-runs.md)
+and, for the API side, `issassist-api/docs/projects/2026-10-29-ai-analysis-api.md`.
+
 ### `api.avepointRunCheck` and `api.postgres.readonlyRole`: a daily check of the AvePoint collection
 
 **What it is.** Every morning, 15 minutes after the AvePoint collection, a Job checks that

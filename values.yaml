@@ -118,14 +118,38 @@ aiAnalysis:
       apiKey: ""
     gemini:
       allowed: false
+    # IBM Bob (slice 4): every analysis runs in a fresh pod of its own, in
+    # `namespace`, created by the API and deleted when it ends. Needs
+    # clusterScoped.create (the chart creates that namespace, its network policy and
+    # the API's permissions there). The operator must accept IBM's licence terms in
+    # the web GUI before Bob can be switched on.
     bob:
       allowed: false
-      # Bob's key is for its per-run pods (slice 4) and is never mounted into the API
-      # pod. Set here, it is rendered as a Secret in this namespace and only its name
-      # is given to the API, so the web GUI shows it as set by the installation.
-      # Without one, it can be entered in the web GUI.
+      # Bob's key is for its run pods and is never mounted into the API pod.
+      #   existingSecret: a Secret you created in `namespace` (not this one), key
+      #     "api-key"; the run pods read it, the API knows only its name.
+      #   apiKey: the chart renders it as issassist-ai-bob-key in `namespace`.
+      # Without either, it can be entered in the web GUI.
       existingSecret: ""
       apiKey: ""
+      # Shown in the web GUI. Where Bob runs follows the Bob instance the key
+      # belongs to; this does not change it.
+      region: "us-east"
+      namespace: "ai-bob-runs"
+      # The issassist-bob-runner image (issassist-api docker/bob-runner). Empty:
+      # Bob is not set up, and every run says so.
+      image: ""
+      # A run pod is stopped after this long (30 to 900).
+      timeoutSeconds: 180
+      maxTurns: 3
+      # Bob is paid in bobcoins, not EUR. Its own daily limit, which no one can
+      # confirm past. 0 means unpriced, and then Bob cannot be switched on.
+      dailyCapBobcoins: 0
+      # The most one run may spend; it gets at most what is left of the day's limit.
+      maxCostPerRunBobcoins: 5
+      # What a run pod may reach: "internet-443" is HTTPS to addresses outside the
+      # cluster's private ranges, and nothing inside the cluster.
+      egress: "internet-443"
     isstech:
       allowed: false
     copilot:

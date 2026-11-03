@@ -1,0 +1,120 @@
+{{/*
+IBM Bob's run namespace (#463 slice 4): the API starts one pod here per analysis
+and deletes it when the analysis ends. Rendered only with `clusterScoped.create`
+and `aiAnalysis.providers.bob.allowed: true`.
+
+* The namespace enforces the "restricted" Pod Security level.
+* No pod here accepts a connection, and a pod here reaches only DNS and HTTPS
+  (443) to addresses outside the private, shared and link-local ranges: nothing
+  in this cluster.
+* The API's ServiceAccount may create, read, list and delete pods and read their
+  logs here, and create and delete Secrets. It cannot read or list a Secret.
+* A key set with `bob.apiKey` is rendered here, as `issassist-ai-bob-key`.
+
+Read through `default dict`: `--reuse-values` rebases on the previous release's
+values, where these keys did not exist yet. Only `allowed: true` turns it on.
+*/}}
+{{- $scoped := .Values.clusterScoped | default dict }}
+{{- $bob := ((.Values.aiAnalysis | default dict).providers | default dict).bob | default dict }}
+{{- if and .Values.api.enabled (eq (toString $scoped.create) "true") (eq (toString $bob.allowed) "true") }}
+{{- $ns := $bob.namespace | default "ai-bob-runs" }}
+{{- if eq $ns .Release.Namespace }}
+{{- fail "aiAnalysis.providers.bob.namespace must not be the release's own namespace" }}
+{{- end }}
+{{- if or (eq $ns "default") (hasPrefix "kube-" $ns) }}
+{{- fail "aiAnalysis.providers.bob.namespace must be a namespace of its own, not default or kube-*" }}
+{{- end }}
+{{- $egress := $bob.egress | default "internet-443" }}
+{{- if ne $egress "internet-443" }}
+{{- fail "aiAnalysis.providers.bob.egress must be \"internet-443\"" }}
+{{- end }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ $ns }}
+  labels:
+    app.kubernetes.io/name: issassist
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/audit: restricted
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: bob-runs
+  namespace: {{ $ns }}
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress: []
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+              - 100.64.0.0/10
+              - 169.254.0.0/16
+              - 127.0.0.0/8
+      ports:
+        - port: 443
+          protocol: TCP
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: issassist-bob-runner
+  namespace: {{ $ns }}
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["create", "get", "list", "delete"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["create", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: issassist-bob-runner
+  namespace: {{ $ns }}
+subjects:
+  - kind: ServiceAccount
+    name: api
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: issassist-bob-runner
+{{- if $bob.apiKey }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: issassist-ai-bob-key
+  namespace: {{ $ns }}
+type: Opaque
+stringData:
+  api-key: {{ $bob.apiKey | quote }}
+{{- end }}
+{{- end }}
