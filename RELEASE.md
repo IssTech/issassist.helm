@@ -12,6 +12,52 @@ in `docs/projects/<date>-<slug>.md`, linked from the entry.
 
 ## Next chart release — in development
 
+### `api.avepointRunCheck` and `api.postgres.readonlyRole`: a daily check of the AvePoint collection
+
+**What it is.** Every morning, 15 minutes after the AvePoint collection, a Job checks that
+the collection wrote that day's figures. A Failed `avepoint-run-check` job in
+`kubectl get jobs` means the collection did not; its log says whether the sync ran and
+collected nothing, did not run at all, or whether the check itself could not read the
+database. The check reads as its own login, `api-readonly`, which can read ten columns of
+the AvePoint collection's own bookkeeping (which customers and services were collected, and
+the status codes AvePoint replied with) and nothing else: not users, not the stored AvePoint
+credentials, not AvePoint's replies themselves, and nothing it could change.
+
+**Where it is.** `values.yaml`:
+
+```yaml
+api:
+  postgres:
+    readonlyRole:
+      enabled: false   # creates the api-readonly login; only `true` turns it on
+  avepointRunCheck:
+    enabled: false     # needs readonlyRole.enabled
+    schedule: "15 6 * * *"   # UTC
+```
+
+The login is created, or its password reset from the `api-postgres-readonly-auth` Secret,
+by the Job `api-postgres-readonly-role`, which runs after every `helm install` and
+`helm upgrade`. Its log ends with `api-readonly: role ready; reads 10 columns of
+avepoint.snapshots and avepoint.raw_responses`. It changes only a login it created itself; if
+a login by that name already exists, it says `ERROR: could not set up the role` and leaves
+it alone.
+
+**What changed for them.** Nothing unless turned on; both are off by default.
+
+- **Turning on the check without the login fails the `helm upgrade`**, with a message that
+  says which key to set.
+- **On a fresh install the login is ready only after the next `helm upgrade`** if the API
+  has not created its tables within 4 minutes. The Job says so in its log and never fails
+  the release.
+- **Turning `readonlyRole` off later leaves the login in the database.** It still has only
+  read access to those ten columns.
+- **Staging only, once:** the check used to be applied by hand from
+  `k8s-avepoint-run-check.yaml`. Delete that CronJob and ConfigMap before the first upgrade
+  that turns `avepointRunCheck` on, or Helm refuses to take them over:
+  `kubectl -n issassist-staging delete cronjob,configmap avepoint-run-check`.
+
+**Where the detail is.** [docs/projects/2026-11-03-avepoint-readonly-role.md](docs/projects/2026-11-03-avepoint-readonly-role.md).
+
 ### `aiAnalysis.debugWizard.enabled`: the AI debug wizard (IssAssist 2.0)
 
 **What it is.** Turns on the AI debug wizard, a step-by-step view of one AI analysis that

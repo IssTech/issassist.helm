@@ -1,0 +1,119 @@
+<title>Läsrollen api-readonly</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: one reading column, the chart change in the order an operator meets it — key, job, SQL, logs, check. */
+:root{
+  --bg:#F4F7F5; --surface:#FFFFFF; --surface-2:#E8EFEA; --border:#C9D6CE;
+  --fg:#0D1712; --fg-2:#3D4D44; --muted:#5A6B61;
+  --green:#1F7A2C; --warn:#8A5A00; --err:#B42318;
+  --font-sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --font-mono:ui-monospace,"SFMono-Regular","SF Mono",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#050806; --surface:#0D1712; --surface-2:#13201A; --border:#263B30;
+  --fg:#F5F7F6; --fg-2:#A8B5AE; --muted:#8A9A90;
+  --green:#4ADE5B; --warn:#F5B544; --err:#F87171; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#050806; --surface:#0D1712; --surface-2:#13201A; --border:#263B30;
+  --fg:#F5F7F6; --fg-2:#A8B5AE; --muted:#8A9A90;
+  --green:#4ADE5B; --warn:#F5B544; --err:#F87171; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--font-sans);font-size:15px;line-height:1.55}
+.wrap{max-width:860px;margin:0 auto;padding-block:32px 56px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:flex;flex-direction:column;gap:28px}
+h1{font-family:var(--font-mono);font-weight:400;font-size:1.5rem;margin:0;text-wrap:balance}
+h2{font-family:var(--font-mono);font-weight:400;font-size:1.05rem;margin:0 0 8px}
+p{margin:0 0 10px;max-width:68ch;color:var(--fg-2)}
+.lede{color:var(--fg-2)}
+.eyebrow{font-family:var(--font-mono);font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+code{font-family:var(--font-mono);font-size:.88em;background:var(--surface-2);padding:1px 5px;border-radius:4px}
+pre{font-family:var(--font-mono);font-size:.82rem;line-height:1.5;background:var(--surface);border:1px solid var(--border);
+  border-radius:8px;padding:14px 16px;margin:0;overflow-x:auto}
+.c{color:var(--muted)}
+.ok{color:var(--green)} .warn{color:var(--warn)} .err{color:var(--err)}
+.status{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+@media (max-width:620px){.status{grid-template-columns:minmax(0,1fr)}}
+.box{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px}
+.box b{font-family:var(--font-mono);font-weight:500;font-size:.8rem;letter-spacing:.06em;text-transform:uppercase;display:block;margin-bottom:4px}
+.tw{overflow-x:auto;border:1px solid var(--border);border-radius:8px}
+table{width:100%;border-collapse:collapse;font-size:.88rem}
+th{background:var(--surface-2);font-family:var(--font-mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-align:left;font-weight:500;padding:8px 12px}
+td{padding:9px 12px;border-top:1px solid var(--border);vertical-align:top;color:var(--fg-2)}
+td:first-child{font-family:var(--font-mono);color:var(--fg);white-space:nowrap}
+ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px;color:var(--fg-2)}
+.pill{font-family:var(--font-mono);font-size:.7rem;padding:2px 8px;border-radius:999px;border:1px solid currentColor;white-space:nowrap}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">issassist.helm · mockup, grind ① · 2026/11/03</div>
+    <h1>Läsrollen api-readonly</h1>
+    <p class="lede">Chartet skapar Postgres-rollen som kontrollen <code>avepoint-run-check</code> loggar in med. I dag skapar chartet bara lösenordet. Rollen har aldrig funnits, så kontrollen har fallit varje morgon sedan minst 2026/10/03.</p>
+  </header>
+
+  <section class="status">
+    <div class="box"><b class="err">I dag</b>
+      <code>password authentication failed for user "api-readonly"</code>, kl. 06:15 UTC varje dag. Hemligheten <code>api-postgres-readonly-auth</code> finns sedan 2026/08/11. Rollen finns inte.</div>
+    <div class="box"><b class="ok">Efter ändringen</b>
+      Rollen skapas eller uppdateras vid varje <code>helm install</code> och <code>helm upgrade</code>. Den kan bara läsa schemat <code>avepoint</code>.</div>
+  </section>
+
+  <section>
+    <h2>1. Nyckel i values.yaml</h2>
+    <pre><span class="c"># values.yaml</span>
+api:
+  postgres:
+    readonlyRole:
+      enabled: false        <span class="c"># staging: true</span>
+  avepointRunCheck:         <span class="c"># fråga 2: flytta in kontrollen i chartet</span>
+    enabled: false          <span class="c"># staging: true</span>
+    schedule: "15 6 * * *"  <span class="c"># UTC, efter insamlingen kl. 06:00</span></pre>
+  </section>
+
+  <section>
+    <h2>2. Helm-jobbet</h2>
+    <p>Ett jobb med hooken <code>post-install,post-upgrade</code> kör <code>postgres:17</code> och loggar in som <code>api</code> över TLS (<code>sslmode=verify-full</code>, mot IssAssists CA). Lösenordet hämtas från hemligheten via <code>secretKeyRef</code> och skickas till psql som en variabel. Det syns aldrig på kommandoraden eller i loggen.</p>
+    <pre><span class="c">-- ett misslyckat ALTER ROLE får inte skriva lösenordet i Postgres-loggen</span>
+SET log_min_error_statement = panic;
+DO $$BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname='api-readonly')
+  THEN CREATE ROLE "api-readonly"; END IF; END$$;
+ALTER ROLE "api-readonly" LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION
+  NOBYPASSRLS CONNECTION LIMIT 3 PASSWORD :'ro_password';
+GRANT CONNECT ON DATABASE api TO "api-readonly";
+GRANT USAGE  ON SCHEMA avepoint TO "api-readonly";
+GRANT SELECT ON ALL TABLES IN SCHEMA avepoint TO "api-readonly";
+ALTER DEFAULT PRIVILEGES FOR ROLE api IN SCHEMA avepoint
+  GRANT SELECT ON TABLES TO "api-readonly";</pre>
+  </section>
+
+  <section>
+    <h2>3. Vad rollen kommer åt</h2>
+    <div class="tw"><table>
+      <thead><tr><th>Schema</th><th>Åtkomst</th><th>Varför</th></tr></thead>
+      <tbody>
+        <tr><td>avepoint</td><td><span class="pill ok">SELECT</span></td><td>Det enda som kontrollen läser: körningar, jobb och utbyten med AvePoint.</td></tr>
+        <tr><td>public, auth, tsm, kasten …</td><td><span class="pill err">ingen</span></td><td>Användare, krypterade inloggningsuppgifter och andra kunders data nås inte.</td></tr>
+        <tr><td>skrivning, DDL</td><td><span class="pill err">ingen</span></td><td>Rollen kan inte ändra något och får högst 3 samtidiga anslutningar.</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <h2>4. Loggrader från jobbet</h2>
+    <pre><span class="ok">api-readonly: role ready; SELECT on 9 tables in schema avepoint</span>
+
+<span class="c"># ny installation, innan API:t har migrerat databasen:</span>
+<span class="warn">schema avepoint not there yet (the API has not migrated); waiting…</span>
+<span class="warn">schema avepoint still missing after 4 min; grants will be set on the next upgrade</span></pre>
+    <p>Om schemat inte har kommit efter 4 minuter avslutas jobbet med en varning, inte med ett fel. En installation får aldrig misslyckas för kontrollens skull.</p>
+  </section>
+
+  <section>
+    <h2>Behöver ditt svar</h2>
+    <ol>
+      <li>Ser upplägget rätt ut: en roll som skapas av chartet och bara får läsa schemat <code>avepoint</code>?</li>
+      <li>Ska <code>readonlyRole</code> vara <b>av som standard</b> hos kunder och på för staging?</li>
+      <li>Ska kontrollen flytta in i chartet under <code>api.avepointRunCheck</code>, i stället för att ligga kvar i den lösa filen <code>k8s-avepoint-run-check.yaml</code>?</li>
+    </ol>
+  </section>
+</div>

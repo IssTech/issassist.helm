@@ -1,0 +1,233 @@
+{{/*
+Did the AvePoint collection work? Asked in-cluster, every morning, as the
+read-only login `api.postgres.readonlyRole` creates. Moved here from a manifest
+kept outside the chart (k8s-avepoint-run-check.yaml); the script is unchanged.
+
+The verdict is the Job's exit status, not its logs. A run that collected nothing
+exits non-zero and shows up in `kubectl get jobs` as Failed, so nobody has to
+remember to go and read output. `failedJobsHistoryLimit: 3` keeps the last three
+failures around with their logs intact.
+
+Scope: this installation's own database. What the IssTech dashboard received is
+its own question, asked from its own side.
+
+Read through `default dict`: `--reuse-values` rebases on the previous release's
+values, where these keys did not exist yet. Only `enabled: true` turns it on.
+*/}}
+{{- $check := .Values.api.avepointRunCheck | default dict }}
+{{- $role := (.Values.api.postgres | default dict).readonlyRole | default dict }}
+{{- if and .Values.api.enabled (eq (toString $check.enabled) "true") }}
+{{- if ne (toString $role.enabled) "true" }}
+{{- fail "api.avepointRunCheck.enabled needs api.postgres.readonlyRole.enabled: true, or the check has no login to read with" }}
+{{- end }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: avepoint-run-check
+  labels:
+    app.kubernetes.io/name: avepoint-run-check
+data:
+  check.sh: |
+    #!/bin/sh
+    # Read-only. Every statement here is a SELECT.
+    set -u
+    export PGPASSWORD="$DB_PASSWORD"
+    PSQL="psql -h api-postgres -U $DB_USERNAME -d api -X -q"
+
+    echo "AvePoint collection check — $(date -u '+%Y-%m-%d %H:%M UTC')"
+    echo
+
+    # Prove we can read before interpreting anything. Without this the queries
+    # below return empty strings on a connection failure, and empty reads exactly
+    # like "collected nothing" — the check would blame the sync for its own
+    # broken credential. Distinguishing the two is the whole job.
+    if ! $PSQL -t -A -c "SELECT 1;" >/dev/null 2>/tmp/dberr; then
+      echo "ERROR — cannot query the database. The collection was NOT checked."
+      sed 's/^/    /' /tmp/dberr | head -3
+      echo
+      echo "    This is a fault in the check, not in AvePoint collection."
+      exit 2
+    fi
+
+    echo "── 1. Rows written, last 5 days ─────────────────────────"
+    $PSQL -c "
+      SELECT collected_at::date AS day, record_type, count(*) AS rows
+      FROM avepoint.snapshots
+      GROUP BY 1,2 ORDER BY 1 DESC, 2 LIMIT 10;"
+
+    echo
+    echo "── 2. What AvePoint replied (from avepoint.raw_responses) ─"
+    $PSQL -c "
+      SELECT collected_at::date AS day, kind, http_status,
+             max(attempt) AS max_attempt, count(*) AS calls
+      FROM avepoint.raw_responses
+      WHERE collected_at > now() - interval '2 days'
+      GROUP BY 1,2,3 ORDER BY 1 DESC, 2, 3;"
+
+    echo
+    echo "── 3. Orphan series (tenant-less AND shadowing a real one) ─"
+    $PSQL -c "
+      WITH cur AS (
+        SELECT DISTINCT ON (customer_id, record_type, service_name, tenant_id)
+               customer_id, customer_name, record_type, service_name,
+               tenant_id, collected_at
+        FROM avepoint.snapshots
+        ORDER BY customer_id, record_type, service_name, tenant_id, collected_at DESC
+      )
+      SELECT a.customer_name, a.service_name, a.collected_at::date AS frozen_since
+      FROM cur a
+      WHERE a.record_type = 'Service' AND a.tenant_id IS NULL
+        AND EXISTS (SELECT 1 FROM cur b
+                    WHERE b.record_type = 'Service' AND b.customer_id = a.customer_id
+                      AND b.service_name IS NOT DISTINCT FROM a.service_name
+                      AND b.tenant_id IS NOT NULL)
+      ORDER BY 1,2;"
+
+    echo
+    echo "── Verdict ───────────────────────────────────────────────"
+
+    # Written today? This is the one signal that matters: pacing and backoff are
+    # means, and a row on disk is the end. Counted in UTC because the sync is
+    # scheduled in UTC.
+    WROTE=$($PSQL -t -A -c "
+      SELECT count(*) FROM avepoint.snapshots
+      WHERE collected_at::date = (now() AT TIME ZONE 'UTC')::date;")
+
+    # Recorded exchanges tell apart 'the sync failed' from 'the sync never ran' —
+    # before raw_responses existed, both looked identical from outside.
+    CALLS=$($PSQL -t -A -c "
+      SELECT count(*) FROM avepoint.raw_responses
+      WHERE collected_at::date = (now() AT TIME ZONE 'UTC')::date;")
+
+    ORPHANS=$($PSQL -t -A -c "
+      WITH cur AS (
+        SELECT DISTINCT ON (customer_id, record_type, service_name, tenant_id)
+               customer_id, record_type, service_name, tenant_id
+        FROM avepoint.snapshots
+        ORDER BY customer_id, record_type, service_name, tenant_id, collected_at DESC
+      )
+      SELECT count(*) FROM cur a
+      WHERE a.record_type='Service' AND a.tenant_id IS NULL
+        AND EXISTS (SELECT 1 FROM cur b
+                    WHERE b.record_type='Service' AND b.customer_id=a.customer_id
+                      AND b.service_name IS NOT DISTINCT FROM a.service_name
+                      AND b.tenant_id IS NOT NULL);")
+
+    echo "  snapshot rows written today : ${WROTE}"
+    echo "  AvePoint calls recorded     : ${CALLS}"
+    echo "  orphan series               : ${ORPHANS}"
+    echo
+
+    if [ "${WROTE:-0}" -gt 0 ]; then
+      echo "PASS — collection wrote ${WROTE} row(s) today."
+      exit 0
+    fi
+
+    if [ "${CALLS:-0}" -gt 0 ]; then
+      echo "FAIL — the sync ran and collected nothing."
+      echo "       Section 2 above has AvePoint's own replies. A wall of 503 with"
+      echo "       max_attempt 5 means still rate-limited despite the pacing."
+      exit 1
+    fi
+
+    echo "FAIL — no rows and no recorded calls: the sync did not run at all."
+    echo "       Check the scheduler in the api pod, not AvePoint."
+    exit 1
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: avepoint-run-check
+  labels:
+    app.kubernetes.io/name: avepoint-run-check
+spec:
+  # 15 minutes after the 06:00 collection, which yesterday took ~75s even while
+  # failing every call.
+  #
+  # Etc/UTC deliberately, unlike the tsm-agent CronJobs which follow the admin
+  # timezone. The sync time is configured as `avepoint.sync_time_utc`, so pinning
+  # the check to local time would silently drift an hour away from it at every DST
+  # change and check before the sync had run for half the year.
+  schedule: {{ $check.schedule | default "15 6 * * *" | quote }}
+  timeZone: "Etc/UTC"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  startingDeadlineSeconds: 3600
+  jobTemplate:
+    spec:
+      backoffLimit: 0        # a failure is the finding; do not retry it away
+      activeDeadlineSeconds: 300
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: avepoint-run-check
+        spec:
+          restartPolicy: Never
+          # Talks to Postgres only, never to the Kubernetes API.
+          automountServiceAccountToken: false
+          # Required by the namespace's "restricted" PodSecurity level, which
+          # rejects the pod outright without it.
+          securityContext:
+            seccompProfile:
+              type: RuntimeDefault
+          # No imagePullSecrets: postgres:17 is public and already pulled in this
+          # namespace for api-postgres, so this adds no dependency on the ghcr
+          # credential.
+          containers:
+            - name: check
+              image: {{ .Values.api.postgres.image | quote }}
+              imagePullPolicy: IfNotPresent
+              command: ["/bin/sh", "/scripts/check.sh"]
+              env:
+                # Over TLS, verifying the server against the IssAssist CA.
+                - name: PGSSLMODE
+                  value: "verify-full"
+                - name: PGSSLROOTCERT
+                  value: "/etc/issassist/ca.crt"
+                # The read-only login from templates/accounts/api-postgres.yaml.
+                # Its role is created by postgres-readonly-role.yaml.
+                - name: DB_USERNAME
+                  valueFrom:
+                    secretKeyRef:
+                      name: api-postgres-readonly-auth
+                      key: username
+                - name: DB_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: api-postgres-readonly-auth
+                      key: password
+              volumeMounts:
+                - name: scripts
+                  mountPath: /scripts
+                # readOnlyRootFilesystem is on, so psql's stderr capture needs a
+                # writable /tmp of its own.
+                - name: tmp
+                  mountPath: /tmp
+                - name: issassist-ca-cert
+                  mountPath: "/etc/issassist/ca.crt"
+                  subPath: "tls.crt"
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                runAsNonRoot: true
+                runAsUser: 999
+                capabilities:
+                  drop: ["ALL"]
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 128Mi
+          volumes:
+            - name: scripts
+              configMap:
+                name: avepoint-run-check
+                defaultMode: 0555
+            - name: tmp
+              emptyDir: {}
+            - name: issassist-ca-cert
+              secret:
+                secretName: issassist-ca-cert
+{{- end }}
