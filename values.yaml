@@ -172,8 +172,6 @@ aiAnalysis:
       # What a run pod may reach: "internet-443" is HTTPS to addresses outside the
       # cluster's private ranges, and nothing inside the cluster.
       egress: "internet-443"
-    isstech:
-      allowed: false
     copilot:
       allowed: false
 

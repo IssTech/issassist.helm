@@ -13,7 +13,7 @@ web GUI shows it as set by the installation; it is never mounted into the API po
 */}}
 {{- if .Values.api.enabled }}
 {{- $providers := (.Values.aiAnalysis | default dict).providers | default dict }}
-{{- range $id := list "local" "claude" "gemini" "isstech" "copilot" }}
+{{- range $id := list "local" "claude" "gemini" "copilot" }}
 {{- $p := get $providers $id }}
 {{- if and (kindIs "map" $p) $p.apiKey }}
 ---

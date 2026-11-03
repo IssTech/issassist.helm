@@ -12,6 +12,22 @@ in `docs/projects/<date>-<slug>.md`, linked from the entry.
 
 ## Next chart release — in development
 
+### `aiAnalysis.providers.isstech` removed
+
+**What it is.** The AI analysis provider "IssTech" (the IssAssist LLM reached through the
+IssTech dashboard) is gone. It never ran: it was listed, greyed out, until the dashboard
+could offer analysis. The IssAssist LLM is reached as **IssAssist LLM / own LLM**
+(`aiAnalysis.providers.local`), an OpenAI-compatible endpoint.
+
+**Where it is.** `values.yaml` → `aiAnalysis.providers`: the `isstech` block is removed.
+
+**What changed for them.** Nothing to do. A release upgraded with `--reuse-values` that
+still has an `isstech` block renders as before and the block is ignored: no
+`IA_AI_ISSTECH_*` setting and no `issassist-ai-isstech-key` Secret is rendered. If you set
+`isstech.apiKey`, Helm no longer renders that Secret, and you can remove the block.
+
+**Where the detail is.** `issassist-api` `docs/projects/2026-10-29-ai-analysis-api.md`.
+
 ### `aiAnalysis.providers.<id>.dailyCap` / `dailyCapMax`: a daily cap per AI provider
 
 **What it is.** Each AI provider gets its own daily cap, in its own unit. Operators
@@ -228,7 +244,7 @@ provider is allowed only for `allowed: true`. **`maxDailyCapEur: 0` means 0**: n
 outside this cluster can run. **A local endpoint that is not `https://`, or that carries
 credentials (`user:pass@`) or a query string, fails the install** with a message that does
 not repeat the value. Keys are wired only for the known providers (`local`, `claude`,
-`gemini`, `isstech`, `copilot`); any other name under `providers`, `BOB` included, is
+`gemini`, `copilot`); any other name under `providers`, `BOB` included, is
 ignored. There is no switch for plain HTTP. **The API pod never receives the
 IBM Bob key**, even if `bob.existingSecret` is set.
 
