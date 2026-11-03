@@ -11,20 +11,30 @@ and `aiAnalysis.providers.bob.allowed: true`.
   logs here, and create and delete Secrets. It cannot read or list a Secret
   through the API server.
 * That alone would not keep a Secret here from the API: a pod it creates could
-  print one to its log. So an admission policy (ValidatingAdmissionPolicy, GA
-  since Kubernetes 1.30) admits only the run pod providers/bob.py builds: two
-  containers, each pinned by digest to its own image and entrypoint.
-  - `bob` gets a fake key, the address https://localhost:8443 and the run CA, and
-    reads nothing from a Secret; it mounts only the prompt and that CA, by item.
-  - `keyproxy`, a native sidecar, holds the real key (Helm's Secret or the run's)
-    and the TLS pair, and forwards to `gatewayUrl` only (mockup §9).
-  - No hooks, probes, envFrom or shared process namespace; no token; a deadline;
-    restartPolicy Never.
+  print one to its log, by its own command or by code it puts in place of the
+  image's. So an admission policy (ValidatingAdmissionPolicy, GA since
+  Kubernetes 1.30) admits only the run pod providers/bob.py builds, and pins:
+  - the name bob-run-*, the container `bob` and the native sidecar `keyproxy`,
+    each with its image by digest and no command, args (bob's: exactly
+    --max-turns <n> --max-cost <n>), workingDir, hooks, probes or envFrom, and a
+    read-only root filesystem;
+  - every env var by name and value: `bob` gets a fake key, the address
+    https://localhost:8443 and the run CA, and reads nothing from a Secret;
+    `keyproxy` reads the key (Helm's Secret or the run's) and the fake key, and
+    forwards to `gatewayUrl` only;
+  - every volume and mount exactly: `work` (prompt.txt, ca.crt) read-only at
+    /work and the emptyDirs at /home/bob and /tmp for bob; `proxy-tls` (tls.crt,
+    tls.key) read-only at /run/keyproxy for keyproxy; each item at a path equal
+    to its key, with no mode, under the default 0644; no subPath, subPathExpr or
+    mount propagation. So no file of the Secret can take the place of code;
+  - no shared process namespace, token, nodeName, nodeSelector, affinity,
+    priority class, runtime class, other scheduler, own tolerations, hostAliases
+    or dnsConfig; a deadline; restartPolicy Never.
   The API's account may create, change and delete only Secrets named `bob-run-*`;
   Helm's own key Secret is created by whoever runs Helm, which the policy does not
   restrict.
 * A ResourceQuota caps the run pods at `maxConcurrent` + 1 (one Test beside the
-  analyses) and their memory.
+  analyses), their memory and their CPU.
 * A key set with `bob.apiKey` is rendered here, as `issassist-ai-bob-key`.
 
 Read through `default dict`: `--reuse-values` rebases on the previous release's
@@ -157,8 +167,11 @@ metadata:
 spec:
   hard:
     pods: {{ add $concurrent 1 | quote }}
-    # bob 512 Mi + keyproxy 96 Mi per run pod, rounded up.
+    # bob 512 Mi + keyproxy 96 Mi per run pod, rounded up; CPU likewise
+    # (bob 1, keyproxy 0.2 as limits; 100m + 20m as requests).
     limits.memory: {{ printf "%dMi" (mul (add $concurrent 1) 640) | quote }}
+    limits.cpu: {{ printf "%dm" (mul (add $concurrent 1) 1200) | quote }}
+    requests.cpu: {{ printf "%dm" (mul (add $concurrent 1) 120) | quote }}
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicy
@@ -213,12 +226,24 @@ spec:
     - expression: |-
         has(variables.p.env) && size(variables.p.env) == 3 && variables.p.env.exists(e, e.name == 'KEYPROXY_REAL_KEY' && has(e.valueFrom) && has(e.valueFrom.secretKeyRef) && e.valueFrom.secretKeyRef.key == 'api-key' && (e.valueFrom.secretKeyRef.name == object.metadata.name || e.valueFrom.secretKeyRef.name == {{ $helmKey | toJson }})) && variables.p.env.exists(e, e.name == 'KEYPROXY_FAKE_KEY' && has(e.valueFrom) && has(e.valueFrom.secretKeyRef) && e.valueFrom.secretKeyRef.name == object.metadata.name && e.valueFrom.secretKeyRef.key == 'fake-key') && variables.p.env.exists(e, e.name == 'KEYPROXY_UPSTREAM' && e.value == {{ $gateway | toJson }})
       message: "keyproxy reads the key from Helm's Secret or the run's, and forwards to gatewayUrl only."
+    # Volumes and mounts are pinned by name, type, item, path and mode: a mount path,
+    # subPath, item path or mode is how a file of the run Secret could replace the
+    # code an image runs (second security review, 2026/11/03).
     - expression: |-
-        has(object.spec.volumes) && object.spec.volumes.all(v, has(v.emptyDir) || (has(v.secret) && v.secret.secretName == object.metadata.name && has(v.secret.items) && v.secret.items.all(i, (v.name == 'work' && i.key in ['prompt.txt', 'ca.crt']) || (v.name == 'proxy-tls' && i.key in ['tls.crt', 'tls.key']))))
-      message: "Volumes: emptyDirs, the prompt and the run CA for bob, and the TLS pair for keyproxy, by item."
+        object.metadata.name.startsWith('bob-run-')
+      message: "A run pod is named bob-run-*."
     - expression: |-
-        has(variables.c.volumeMounts) && variables.c.volumeMounts.all(m, m.name in ['work', 'home', 'tmp']) && (!has(variables.p.volumeMounts) || variables.p.volumeMounts.all(m, m.name in ['proxy-tls', 'tmp']))
-      message: "bob mounts the prompt, its home and tmp; keyproxy mounts the TLS pair and tmp."
+        has(object.spec.volumes) && size(object.spec.volumes) == 4 && object.spec.volumes.all(v, (v.name in ['home', 'tmp'] && has(v.emptyDir) && !has(v.secret)) || (v.name in ['work', 'proxy-tls'] && has(v.secret) && !has(v.emptyDir) && v.secret.secretName == object.metadata.name && (!has(v.secret.defaultMode) || v.secret.defaultMode == 420) && has(v.secret.items) && v.secret.items.all(i, i.path == i.key && !has(i.mode) && ((v.name == 'work' && i.key in ['prompt.txt', 'ca.crt']) || (v.name == 'proxy-tls' && i.key in ['tls.crt', 'tls.key']))))) && ['work', 'proxy-tls', 'home', 'tmp'].all(n, object.spec.volumes.exists(v, v.name == n))
+      message: "Volumes: work (prompt.txt, ca.crt), proxy-tls (tls.crt, tls.key), each item at its own name, mode 0644 (the default the API server sets), and the emptyDirs home and tmp."
+    - expression: |-
+        has(variables.c.volumeMounts) && size(variables.c.volumeMounts) == 3 && variables.c.volumeMounts.all(m, !has(m.subPath) && !has(m.subPathExpr) && !has(m.mountPropagation) && ((m.name == 'work' && m.mountPath == '/work' && has(m.readOnly) && m.readOnly) || (m.name == 'home' && m.mountPath == '/home/bob') || (m.name == 'tmp' && m.mountPath == '/tmp'))) && ['work', 'home', 'tmp'].all(n, variables.c.volumeMounts.exists(m, m.name == n))
+      message: "bob mounts work read-only at /work, home at /home/bob and tmp at /tmp, and nothing else."
+    - expression: |-
+        has(variables.p.volumeMounts) && size(variables.p.volumeMounts) == 1 && variables.p.volumeMounts[0].name == 'proxy-tls' && variables.p.volumeMounts[0].mountPath == '/run/keyproxy' && has(variables.p.volumeMounts[0].readOnly) && variables.p.volumeMounts[0].readOnly && !has(variables.p.volumeMounts[0].subPath) && !has(variables.p.volumeMounts[0].subPathExpr) && !has(variables.p.volumeMounts[0].mountPropagation)
+      message: "keyproxy mounts proxy-tls read-only at /run/keyproxy, and nothing else."
+    - expression: |-
+        [variables.c, variables.p].all(x, !has(x.workingDir) && has(x.securityContext) && has(x.securityContext.readOnlyRootFilesystem) && x.securityContext.readOnlyRootFilesystem)
+      message: "No workingDir, and a read-only root filesystem, in both containers."
     - expression: |-
         !has(object.spec.shareProcessNamespace) || object.spec.shareProcessNamespace == false
       message: "The containers do not share a process namespace: bob may not read keyproxy's memory."
@@ -234,6 +259,12 @@ spec:
     - expression: |-
         !has(object.spec.nodeName) && !has(object.spec.hostAliases) && !has(object.spec.dnsConfig)
       message: "No nodeName, hostAliases or dnsConfig."
+    # Scheduling is the cluster's: nothing here may choose a node, a runtime or a
+    # priority. The API server adds the default scheduler, and the two NoExecute
+    # tolerations of DefaultTolerationSeconds, before this policy sees the pod.
+    - expression: |-
+        !has(object.spec.nodeSelector) && !has(object.spec.affinity) && !has(object.spec.priorityClassName) && !has(object.spec.runtimeClassName) && !has(object.spec.topologySpreadConstraints) && (!has(object.spec.schedulerName) || object.spec.schedulerName == 'default-scheduler') && (!has(object.spec.tolerations) || object.spec.tolerations.all(t, has(t.key) && t.key in ['node.kubernetes.io/not-ready', 'node.kubernetes.io/unreachable'] && t.operator == 'Exists' && t.effect == 'NoExecute'))
+      message: "No nodeSelector, affinity, priority, runtime class, other scheduler or tolerations of its own."
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicyBinding

@@ -134,4 +134,11 @@ expect "an http gateway fails"                        'gatewayUrl must be a plai
 expect "a gateway with credentials fails"             'gatewayUrl must be a plain https' -- "${bob[@]}" --set "aiAnalysis.providers.bob.gatewayUrl=https://u""@x.example"
 expect_section "no shared process namespace"          ValidatingAdmissionPolicy issassist-bob-run-pods-ai-bob-runs 'shareProcessNamespace == false' -- "${proxied[@]}"
 expect "the sidecar image reaches the API"            "IA_AI_BOB_KEYPROXY_IMAGE: \"ghcr.io/isstech/issassist-bob-keyproxy@${digest}\"" -- "${proxied[@]}"
+# The second review: CPU in the quota, and the mounts pinned in the policy.
+expect_section "the quota caps CPU limits"            ResourceQuota bob-runs 'limits.cpu: "4800m"' -- "${bob[@]}" --set aiAnalysis.maxConcurrent=3
+expect_section "the quota caps CPU requests"          ResourceQuota bob-runs 'requests.cpu: "480m"' -- "${bob[@]}" --set aiAnalysis.maxConcurrent=3
+expect_section "bob's mounts are pinned by path"      ValidatingAdmissionPolicy issassist-bob-run-pods-ai-bob-runs "m.name == 'work' && m.mountPath == '/work'" -- "${proxied[@]}"
+expect_section "keyproxy's mount is pinned by path"   ValidatingAdmissionPolicy issassist-bob-run-pods-ai-bob-runs "variables.p.volumeMounts\\[0\\].mountPath == '/run/keyproxy'" -- "${proxied[@]}"
+expect_section "an item's path is its key"            ValidatingAdmissionPolicy issassist-bob-run-pods-ai-bob-runs 'i.path == i.key && !has.i.mode.' -- "${proxied[@]}"
+expect_section "a run pod is named bob-run-*"         ValidatingAdmissionPolicy issassist-bob-run-pods-ai-bob-runs "startsWith\\('bob-run-'\\)" -- "${proxied[@]}"
 exit $fail

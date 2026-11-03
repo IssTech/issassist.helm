@@ -127,3 +127,23 @@ The chart repo has no CI, so this runs by hand.
     - Bob mounting anything;
     - a sidecar `command`;
     - Bob pointed past the sidecar.
+
+## Second security review (2026/11/03): mounts, paths and scheduling
+
+- **The pod policy now pins every volume and mount exactly:**
+  - by name, mountPath and readOnly;
+  - no subPath, subPathExpr or mountPropagation;
+  - every Secret item at a path equal to its key, with no mode and the API
+    server's default 0644.
+
+  It also refuses `workingDir`, and requires a read-only root filesystem and the name
+  `bob-run-*`. A pinned name or key alone did not stop a file of the run Secret being
+  mounted in place of an image's code.
+- **Scheduling fields are refused:**
+  - nodeSelector, affinity, priorityClassName, runtimeClassName and
+    topologySpreadConstraints;
+  - a scheduler other than `default-scheduler`;
+  - tolerations other than the two that DefaultTolerationSeconds adds.
+- **The quota limits CPU:** 1.2 cores per run pod as limits, and 120m as requests.
+- **The live check grew to 65 cases** on k3s v1.36.5, including the review's attacks
+  and their variants. Each new rule was broken once and the check failed.

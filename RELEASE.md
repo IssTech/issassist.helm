@@ -68,8 +68,15 @@ namespace's `default`.
 - **A Bob `existingSecret` created in the release's namespace before this release must be
   created again in `ai-bob-runs`.**
 - The API pod now runs as the ServiceAccount `api`. Nothing else about it changes.
-- The run namespace admits only IssAssist's own Bob run pods: the two configured
-  images (Bob, and the key sidecar), started the one way IssAssist starts them. A pod an operator writes by hand is refused
+- The run namespace admits only IssAssist's own Bob run pods:
+  - the two configured images (Bob, and the key sidecar), each started by its own
+    entrypoint, with its own settings, and the files and folders IssAssist gives
+    it, mounted where IssAssist mounts them;
+  - pods that choose no node, scheduler, priority or runtime of their own.
+
+  A pod an operator writes by hand is refused there, on purpose. It needs
+  Kubernetes 1.30 or later.
+- The run namespace's quota now limits CPU as well as memory. A pod an operator writes by hand is refused
   there; that is on purpose. It also caps the run pods at `aiAnalysis.maxConcurrent` + 1
   and their memory. **Needs Kubernetes 1.30 or later** (ValidatingAdmissionPolicy).
 
