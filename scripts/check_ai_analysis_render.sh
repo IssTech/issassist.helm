@@ -44,11 +44,101 @@ expect "apiKey wins over existingSecret in the pod"   'name: "issassist-ai-claud
 expect "the Secret name shown is the rendered one"    'IA_AI_CLAUDE_SECRET_NAME: "issassist-ai-claude-key"' -- --set "aiAnalysis.providers.claude.apiKey=${keymark}"
 expect_not "no apiKey renders no key Secret"          'name: issassist-ai-claude-key' --
 expect_not "a Bob apiKey never reaches the API pod"   'IA_AI_BOB_API_KEY' -- --set "aiAnalysis.providers.bob.apiKey=${keymark}"
-expect "a Bob apiKey renders Bob's own Secret"        'name: issassist-ai-bob-key' -- --set "aiAnalysis.providers.bob.apiKey=${keymark}"
+expect "a Bob apiKey renders Bob's own Secret"        'name: issassist-ai-bob-key' -- --set "aiAnalysis.providers.bob.apiKey=${keymark}" --set aiAnalysis.providers.bob.allowed=true
 expect "the API is told Bob's key is Helm's (name only)" 'IA_AI_BOB_SECRET_NAME: "issassist-ai-bob-key"' -- --set "aiAnalysis.providers.bob.apiKey=${keymark}"
 expect_not "no Secret is named for Claude by default"  'IA_AI_CLAUDE_SECRET_NAME' --
 expect "the web-key encryption key is generated"      'secret-generator.v1.mittwald.de/autogenerate: "ai-secret-key"' --
 expect "the API reads IA_AI_SECRET_KEY"               'name: IA_AI_SECRET_KEY' --
 expect_not "a blank existingSecret names no Secret"      'IA_AI_CLAUDE_SECRET_NAME' -- --set "aiAnalysis.providers.claude.existingSecret= "
 expect "an existingSecret is trimmed"                  'IA_AI_CLAUDE_SECRET_NAME: "issassist-ai-anthropic"' -- --set "aiAnalysis.providers.claude.existingSecret= issassist-ai-anthropic "
+# Slice 4: IBM Bob, one pod per run in its own namespace.
+bob=(--set aiAnalysis.providers.bob.allowed=true)
+section() {  # section <kind> <name> -- helm args...: that object's rendered YAML
+  local kind=$1 name=$2; shift 3
+  render "$@" | awk -v k="kind: $kind" -v n="  name: $name" '
+    /^---/ { if (hit) exit; buf=""; seen_k=0; seen_n=0; next }
+    { buf = buf $0 "\n"; if ($0 == k) seen_k=1; if ($0 == n) seen_n=1;
+      if (seen_k && seen_n && !hit) { hit=1; printf "%s", buf; next } if (hit) print }'
+}
+expect_section() {  # expect_section <description> <kind> <name> <pattern> -- helm args...
+  local what=$1 kind=$2 name=$3 pattern=$4; shift 5
+  if section "$kind" "$name" -- "$@" | grep -qE -- "$pattern"; then echo "ok   $what"; else echo "FAIL $what"; fail=1; fi
+}
+expect_section_not() {
+  local what=$1 kind=$2 name=$3 pattern=$4; shift 5
+  if section "$kind" "$name" -- "$@" | grep -qE -- "$pattern"; then echo "FAIL $what"; fail=1; else echo "ok   $what"; fi
+}
+expect_not "Bob off renders no run namespace"           'name: ai-bob-runs' --
+expect "Bob allowed renders its run namespace"         'name: ai-bob-runs' -- "${bob[@]}"
+expect_not "bob.allowed yes is not on"                 'name: ai-bob-runs' -- --set aiAnalysis.providers.bob.allowed=yes
+expect_not "without clusterScoped.create no namespace" 'name: ai-bob-runs' -- "${bob[@]}" --set clusterScoped.create=false
+expect "the run namespace enforces restricted"         'pod-security.kubernetes.io/enforce: restricted' -- "${bob[@]}"
+expect_section "no connection into a run pod"           NetworkPolicy bob-runs 'ingress: \[\]' -- "${bob[@]}"
+expect_section "run pods cannot reach the pod network"  NetworkPolicy bob-runs '- 10\.0\.0\.0/8' -- "${bob[@]}"
+expect_section "run pods cannot reach link-local (cloud metadata)" NetworkPolicy bob-runs '- 169\.254\.0\.0/16' -- "${bob[@]}"
+expect_section "run pods reach the internet on 443 only" NetworkPolicy bob-runs 'port: 443' -- "${bob[@]}"
+expect_section_not "run pods reach no other port"       NetworkPolicy bob-runs 'port: (80|8000|5432|6379)$' -- "${bob[@]}"
+expect_section "the API may create and delete Secrets"  Role issassist-bob-runner 'verbs: \["create", "delete"\]' -- "${bob[@]}"
+if section Role issassist-bob-runner -- "${bob[@]}" | grep -A1 'resources: \["secrets"\]' | grep -qE '"(get|list|watch|update|patch)"'; then
+  echo "FAIL the Secret rule grants only create and delete"; fail=1
+else echo "ok   the Secret rule grants only create and delete"; fi
+expect_section_not "the API cannot exec into a run pod"  Role issassist-bob-runner 'pods/exec|"\*"' -- "${bob[@]}"
+expect_section "the Role is bound to the API's own account" RoleBinding issassist-bob-runner 'name: api$' -- "${bob[@]}"
+expect "the API runs as its own ServiceAccount"        'serviceAccountName: api' --
+expect_section "a Bob apiKey lands in the run namespace" Secret issassist-ai-bob-key 'namespace: ai-bob-runs' -- "${bob[@]}" --set "aiAnalysis.providers.bob.apiKey=${keymark}"
+expect "the run namespace cannot be the release's"     'must not be the release' -- "${bob[@]}" --set aiAnalysis.providers.bob.namespace=default
+expect "kube-system cannot be the run namespace"      'namespace of its own' -- "${bob[@]}" --set aiAnalysis.providers.bob.namespace=kube-system
+expect "default cannot be the run namespace"          'namespace of its own' -- "${bob[@]}" --set aiAnalysis.providers.bob.namespace=default --namespace other
+expect "an unknown egress mode fails"                  'egress must be' -- "${bob[@]}" --set aiAnalysis.providers.bob.egress=open
+# Mockup §8: a daily cap per provider, in its own unit.
+expect "Claude's cap defaults to 5 EUR"               'IA_AI_CLAUDE_DAILY_CAP: "5"' --
+expect "Claude's maximum defaults to 20 EUR"          'IA_AI_CLAUDE_DAILY_CAP_MAX: "20"' --
+expect "Gemini's cap defaults to 5 EUR"               'IA_AI_GEMINI_DAILY_CAP: "5"' --
+expect "Bob's cap defaults to 20 bobcoins"            'IA_AI_BOB_DAILY_CAP: "20"' --
+expect "Bob's maximum defaults to 50 bobcoins"        'IA_AI_BOB_DAILY_CAP_MAX: "50"' --
+expect "the local LLM has no cap"                     'IA_AI_LOCAL_DAILY_CAP_MAX: "0"' --
+expect "a cap of 0 renders 0, not the fallback"       'IA_AI_CLAUDE_DAILY_CAP: "0"' -- --set aiAnalysis.providers.claude.dailyCap=0
+expect "a maximum renders what was set"               'IA_AI_BOB_DAILY_CAP_MAX: "80"' -- --set aiAnalysis.providers.bob.dailyCapMax=80
+expect "Claude gone (older release) falls back to 5"  'IA_AI_CLAUDE_DAILY_CAP: "5"' -- --set aiAnalysis.providers.claude=null
+expect "Bob gone (older release) falls back to 50"    'IA_AI_BOB_DAILY_CAP_MAX: "50"' -- --set aiAnalysis.providers.bob=null
+expect_not "the old Bob-only cap is gone"             'DAILY_CAP_BOBCOINS' --
+expect "a per-run limit of 0 renders 0, not 5"        'IA_AI_BOB_MAX_COST_PER_RUN_BOBCOINS: "0"' -- --set aiAnalysis.providers.bob.maxCostPerRunBobcoins=0
+expect "Bob gone (older release) renders its defaults" 'IA_AI_BOB_NAMESPACE: "ai-bob-runs"' -- --set aiAnalysis.providers.bob=null
+expect "the Bob image reaches the API"                 'IA_AI_BOB_IMAGE: "ghcr.io/isstech/issassist-bob-runner:1"' -- --set aiAnalysis.providers.bob.image=ghcr.io/isstech/issassist-bob-runner:1
+# Security review of slice 4 (2026/11/03): the admission policy, the quota, the ranges.
+digest="sha256:$(printf '%064d' 7)"
+pinned=(--set aiAnalysis.providers.bob.allowed=true --set "aiAnalysis.providers.bob.image=ghcr.io/isstech/issassist-bob-runner@${digest}")
+expect "an image by tag only fails"                     'pinned by digest' -- "${bob[@]}" --set aiAnalysis.providers.bob.image=ghcr.io/isstech/issassist-bob-runner:1.5.0-3
+expect "the pod policy admits only the pinned image"    "variables.c.image == \"ghcr.io/isstech/issassist-bob-runner@${digest}\"" -- "${pinned[@]}"
+expect_section "the pod policy refuses a command"       ValidatingAdmissionPolicy issassist-bob-run-pods-ai-bob-runs '!has\(variables.c.command\)' -- "${pinned[@]}"
+expect_section "bob reads nothing from a Secret"       ValidatingAdmissionPolicy issassist-bob-run-pods-ai-bob-runs "variables.c.env.all\\(e, !has\\(e.valueFrom\\)" -- "${pinned[@]}"
+expect_section "the pod policy knows Helm's key name"   ValidatingAdmissionPolicy issassist-bob-run-pods-ai-bob-runs '== "issassist-ai-bob"\)' -- "${pinned[@]}" --set aiAnalysis.providers.bob.existingSecret=issassist-ai-bob
+expect_section "the pod deadline follows timeoutSeconds" ValidatingAdmissionPolicy issassist-bob-run-pods-ai-bob-runs 'activeDeadlineSeconds <= 240' -- "${pinned[@]}" --set aiAnalysis.providers.bob.timeoutSeconds=240
+expect_section "the pod policy denies, not warns"       ValidatingAdmissionPolicyBinding issassist-bob-run-pods-ai-bob-runs 'validationActions: \["Deny"\]' -- "${pinned[@]}"
+expect_section "the Secret policy is for the API only"  ValidatingAdmissionPolicy issassist-bob-run-secrets-ai-bob-runs 'request.userInfo.username == "system:serviceaccount:issassist-x:api"' -- "${pinned[@]}" --namespace issassist-x
+expect_section "the Secret policy covers delete"        ValidatingAdmissionPolicy issassist-bob-run-secrets-ai-bob-runs 'operations: \["CREATE", "UPDATE", "DELETE"\]' -- "${pinned[@]}"
+expect_section "the API may touch only bob-run-* Secrets" ValidatingAdmissionPolicy issassist-bob-run-secrets-ai-bob-runs "startsWith\('bob-run-'\)" -- "${pinned[@]}"
+expect "a timeout over 900 s fails"                     'timeoutSeconds must be from 30 to 900' -- "${bob[@]}" --set aiAnalysis.providers.bob.timeoutSeconds=901
+expect_section "run pods are capped at maxConcurrent + 1" ResourceQuota bob-runs 'pods: "4"' -- "${bob[@]}" --set aiAnalysis.maxConcurrent=3
+expect_section "and so is their memory"                 ResourceQuota bob-runs 'limits.memory: "2560Mi"' -- "${bob[@]}" --set aiAnalysis.maxConcurrent=3
+for range in '0\.0\.0\.0/8' '192\.0\.0\.0/24' '198\.18\.0\.0/15'; do
+  expect_section "run pods cannot reach ${range//\\/}"     NetworkPolicy bob-runs "- ${range}" -- "${bob[@]}"
+done
+# Mockup §9: the key sidecar.
+proxied=("${pinned[@]}" --set "aiAnalysis.providers.bob.keyproxyImage=ghcr.io/isstech/issassist-bob-keyproxy@${digest}")
+expect "the sidecar image by tag only fails"          'keyproxyImage must be pinned by digest' -- "${pinned[@]}" --set aiAnalysis.providers.bob.keyproxyImage=ghcr.io/isstech/issassist-bob-keyproxy:1
+expect "the pod policy admits only the pinned sidecar" "variables.p.image == \"ghcr.io/isstech/issassist-bob-keyproxy@${digest}\"" -- "${proxied[@]}"
+expect "the gateway defaults to IBM us-east"          'IA_AI_BOB_GATEWAY_URL: "https://api.us-east.bob.ibm.com"' --
+expect "the sidecar forwards to gatewayUrl only"      "e.name == 'KEYPROXY_UPSTREAM' && e.value == \"https://api.eu-de.example\"" -- "${proxied[@]}" --set aiAnalysis.providers.bob.gatewayUrl=https://api.eu-de.example
+expect "an http gateway fails"                        'gatewayUrl must be a plain https' -- "${bob[@]}" --set aiAnalysis.providers.bob.gatewayUrl=http://x.example
+expect "a gateway with credentials fails"             'gatewayUrl must be a plain https' -- "${bob[@]}" --set "aiAnalysis.providers.bob.gatewayUrl=https://u""@x.example"
+expect_section "no shared process namespace"          ValidatingAdmissionPolicy issassist-bob-run-pods-ai-bob-runs 'shareProcessNamespace == false' -- "${proxied[@]}"
+expect "the sidecar image reaches the API"            "IA_AI_BOB_KEYPROXY_IMAGE: \"ghcr.io/isstech/issassist-bob-keyproxy@${digest}\"" -- "${proxied[@]}"
+# The second review: CPU in the quota, and the mounts pinned in the policy.
+expect_section "the quota caps CPU limits"            ResourceQuota bob-runs 'limits.cpu: "4800m"' -- "${bob[@]}" --set aiAnalysis.maxConcurrent=3
+expect_section "the quota caps CPU requests"          ResourceQuota bob-runs 'requests.cpu: "480m"' -- "${bob[@]}" --set aiAnalysis.maxConcurrent=3
+expect_section "bob's mounts are pinned by path"      ValidatingAdmissionPolicy issassist-bob-run-pods-ai-bob-runs "m.name == 'work' && m.mountPath == '/work'" -- "${proxied[@]}"
+expect_section "keyproxy's mount is pinned by path"   ValidatingAdmissionPolicy issassist-bob-run-pods-ai-bob-runs "variables.p.volumeMounts\\[0\\].mountPath == '/run/keyproxy'" -- "${proxied[@]}"
+expect_section "an item's path is its key"            ValidatingAdmissionPolicy issassist-bob-run-pods-ai-bob-runs 'i.path == i.key && !has.i.mode.' -- "${proxied[@]}"
+expect_section "a run pod is named bob-run-*"         ValidatingAdmissionPolicy issassist-bob-run-pods-ai-bob-runs "startsWith\\('bob-run-'\\)" -- "${proxied[@]}"
 exit $fail

@@ -6,15 +6,14 @@ Prefer `existingSecret`: Helm keeps user-supplied values in plaintext in the rel
 exists because IssAssist is installed by the customer, who may not create Secrets
 by hand. The key can also be entered later in the web GUI; a key here always wins.
 
-A fixed list, as in the ConfigMap. Bob is on it: its Secret is rendered in this
-namespace, and only its *name* reaches the API (IA_AI_BOB_SECRET_NAME), so the web GUI
-shows it as set by the installation. It is never mounted into the API pod (the
-Deployment's list leaves Bob out). Slice 4 must get it to the run pods in
-`ai-bob-runs`: a pod cannot mount a Secret from another namespace.
+A fixed list, as in the ConfigMap. Bob is not on it: a pod can only read a Secret in
+its own namespace, so Bob's is rendered in its run namespace instead
+(ai-bob-runs.yaml). Only its *name* reaches the API (IA_AI_BOB_SECRET_NAME), so the
+web GUI shows it as set by the installation; it is never mounted into the API pod.
 */}}
 {{- if .Values.api.enabled }}
 {{- $providers := (.Values.aiAnalysis | default dict).providers | default dict }}
-{{- range $id := list "local" "claude" "gemini" "bob" "isstech" "copilot" }}
+{{- range $id := list "local" "claude" "gemini" "isstech" "copilot" }}
 {{- $p := get $providers $id }}
 {{- if and (kindIs "map" $p) $p.apiKey }}
 ---

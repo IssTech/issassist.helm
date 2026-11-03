@@ -1,0 +1,325 @@
+{{/*
+IBM Bob's run namespace (#463 slice 4): the API starts one pod here per analysis
+and deletes it when the analysis ends. Rendered only with `clusterScoped.create`
+and `aiAnalysis.providers.bob.allowed: true`.
+
+* The namespace enforces the "restricted" Pod Security level.
+* No pod here accepts a connection, and a pod here reaches only DNS and HTTPS
+  (443) to addresses outside the private, shared and link-local ranges: nothing
+  in this cluster.
+* The API's ServiceAccount may create, read, list and delete pods and read their
+  logs here, and create and delete Secrets. It cannot read or list a Secret
+  through the API server.
+* That alone would not keep a Secret here from the API: a pod it creates could
+  print one to its log, by its own command or by code it puts in place of the
+  image's. So an admission policy (ValidatingAdmissionPolicy, GA since
+  Kubernetes 1.30) admits only the run pod providers/bob.py builds, and pins:
+  - the name bob-run-*, the container `bob` and the native sidecar `keyproxy`,
+    each with its image by digest and no command, args (bob's: exactly
+    --max-turns <n> --max-cost <n>), workingDir, hooks, probes or envFrom, and a
+    read-only root filesystem;
+  - every env var by name and value: `bob` gets a fake key, the address
+    https://localhost:8443 and the run CA, and reads nothing from a Secret;
+    `keyproxy` reads the key (Helm's Secret or the run's) and the fake key, and
+    forwards to `gatewayUrl` only;
+  - every volume and mount exactly: `work` (prompt.txt, ca.crt) read-only at
+    /work and the emptyDirs at /home/bob and /tmp for bob; `proxy-tls` (tls.crt,
+    tls.key) read-only at /run/keyproxy for keyproxy; each item at a path equal
+    to its key, with no mode, under the default 0644; no subPath, subPathExpr or
+    mount propagation. So no file of the Secret can take the place of code;
+  - no shared process namespace, token, nodeName, nodeSelector, affinity,
+    priority class, runtime class, other scheduler, own tolerations, hostAliases
+    or dnsConfig; a deadline; restartPolicy Never.
+  The API's account may create, change and delete only Secrets named `bob-run-*`;
+  Helm's own key Secret is created by whoever runs Helm, which the policy does not
+  restrict.
+* A ResourceQuota caps the run pods at `maxConcurrent` + 1 (one Test beside the
+  analyses), their memory and their CPU.
+* A key set with `bob.apiKey` is rendered here, as `issassist-ai-bob-key`.
+
+Read through `default dict`: `--reuse-values` rebases on the previous release's
+values, where these keys did not exist yet. Only `allowed: true` turns it on.
+*/}}
+{{- $scoped := .Values.clusterScoped | default dict }}
+{{- $bob := ((.Values.aiAnalysis | default dict).providers | default dict).bob | default dict }}
+{{- if and .Values.api.enabled (eq (toString $scoped.create) "true") (eq (toString $bob.allowed) "true") }}
+{{- $ns := $bob.namespace | default "ai-bob-runs" }}
+{{- if eq $ns .Release.Namespace }}
+{{- fail "aiAnalysis.providers.bob.namespace must not be the release's own namespace" }}
+{{- end }}
+{{- if or (eq $ns "default") (hasPrefix "kube-" $ns) }}
+{{- fail "aiAnalysis.providers.bob.namespace must be a namespace of its own, not default or kube-*" }}
+{{- end }}
+{{- $image := $bob.image | default "" }}
+{{- /* An image by tag can be replaced under the same name; the policy admits one exact image. */}}
+{{- if and $image (not (contains "@sha256:" $image)) }}
+{{- fail "aiAnalysis.providers.bob.image must be pinned by digest (…@sha256:…)" }}
+{{- end }}
+{{- $proxyImage := $bob.keyproxyImage | default "" }}
+{{- if and $proxyImage (not (contains "@sha256:" $proxyImage)) }}
+{{- fail "aiAnalysis.providers.bob.keyproxyImage must be pinned by digest (…@sha256:…)" }}
+{{- end }}
+{{- $gateway := $bob.gatewayUrl | default "https://api.us-east.bob.ibm.com" }}
+{{- if or (not (hasPrefix "https://" $gateway)) (contains "@" $gateway) (contains "?" $gateway) }}
+{{- fail "aiAnalysis.providers.bob.gatewayUrl must be a plain https:// URL" }}
+{{- end }}
+{{- $timeout := 180 }}
+{{- if hasKey $bob "timeoutSeconds" }}{{ $timeout = int $bob.timeoutSeconds }}{{ end }}
+{{- if or (lt $timeout 30) (gt $timeout 900) }}
+{{- fail "aiAnalysis.providers.bob.timeoutSeconds must be from 30 to 900" }}
+{{- end }}
+{{- $ai := .Values.aiAnalysis | default dict }}
+{{- $concurrent := 2 }}
+{{- if and (hasKey $ai "maxConcurrent") (not (kindIs "invalid" $ai.maxConcurrent)) }}{{ $concurrent = int $ai.maxConcurrent }}{{ end }}
+{{- $helmKey := include "issassist.aiKeySecretName" (dict "id" "bob" "p" $bob) }}
+{{- $apiUser := printf "system:serviceaccount:%s:api" .Release.Namespace }}
+{{- $egress := $bob.egress | default "internet-443" }}
+{{- if ne $egress "internet-443" }}
+{{- fail "aiAnalysis.providers.bob.egress must be \"internet-443\"" }}
+{{- end }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ $ns }}
+  labels:
+    app.kubernetes.io/name: issassist
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/audit: restricted
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: bob-runs
+  namespace: {{ $ns }}
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress: []
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+              - 100.64.0.0/10
+              - 169.254.0.0/16
+              - 127.0.0.0/8
+              - 0.0.0.0/8
+              - 192.0.0.0/24
+              - 198.18.0.0/15
+      ports:
+        - port: 443
+          protocol: TCP
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: issassist-bob-runner
+  namespace: {{ $ns }}
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["create", "get", "list", "delete"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["create", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: issassist-bob-runner
+  namespace: {{ $ns }}
+subjects:
+  - kind: ServiceAccount
+    name: api
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: issassist-bob-runner
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: bob-runs
+  namespace: {{ $ns }}
+spec:
+  hard:
+    pods: {{ add $concurrent 1 | quote }}
+    # bob 512 Mi + keyproxy 96 Mi per run pod, rounded up; CPU likewise
+    # (bob 1, keyproxy 0.2 as limits; 100m + 20m as requests).
+    limits.memory: {{ printf "%dMi" (mul (add $concurrent 1) 640) | quote }}
+    limits.cpu: {{ printf "%dm" (mul (add $concurrent 1) 1200) | quote }}
+    requests.cpu: {{ printf "%dm" (mul (add $concurrent 1) 120) | quote }}
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: issassist-bob-run-pods-{{ $ns }}
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["pods", "pods/ephemeralcontainers"]
+  # Two containers (mockup §9): `bob`, which holds no key, and `keyproxy`, a native
+  # sidecar that holds it. Each is pinned to its image, its entrypoint, its env names
+  # and its mounts; `bob` may not reach the real key in any form.
+  variables:
+    - name: c
+      expression: |-
+        object.spec.containers[0]
+    - name: p
+      expression: |-
+        object.spec.initContainers[0]
+  validations:
+    - expression: |-
+        (!has(request.subResource) || request.subResource == '') && request.operation == 'CREATE'
+      message: "Run pods are created whole and never changed: no ephemeral containers."
+    - expression: |-
+        size(object.spec.containers) == 1 && object.spec.containers[0].name == 'bob' && has(object.spec.initContainers) && size(object.spec.initContainers) == 1 && object.spec.initContainers[0].name == 'keyproxy' && (!has(object.spec.ephemeralContainers) || size(object.spec.ephemeralContainers) == 0)
+      message: "A run pod has the container bob and the sidecar keyproxy, and nothing else."
+    - expression: |-
+        has(object.metadata.labels) && 'app.kubernetes.io/name' in object.metadata.labels && object.metadata.labels['app.kubernetes.io/name'] == 'bob-run'
+      message: "A run pod carries app.kubernetes.io/name=bob-run."
+    - expression: |-
+        variables.c.image == {{ $image | toJson }} && variables.p.image == {{ $proxyImage | toJson }}
+      message: "Only the configured issassist-bob-runner and issassist-bob-keyproxy images may run here."
+    - expression: |-
+        !has(variables.c.command) && !has(variables.p.command) && !has(variables.p.args)
+      message: "Each image's entrypoint is its command; a run pod sets none."
+    - expression: |-
+        has(variables.c.args) && size(variables.c.args) == 4 && variables.c.args[0] == '--max-turns' && variables.c.args[1].matches('^[0-9]{1,2}$') && variables.c.args[2] == '--max-cost' && variables.c.args[3].matches('^[0-9]{1,7}([.][0-9]{1,4})?$')
+      message: "bob's args are exactly --max-turns <n> --max-cost <n>."
+    - expression: |-
+        [variables.c, variables.p].all(x, !has(x.lifecycle) && !has(x.livenessProbe) && !has(x.readinessProbe) && !has(x.startupProbe) && !has(x.envFrom))
+      message: "No hooks, probes or envFrom: they would run or read something else."
+    - expression: |-
+        has(variables.p.restartPolicy) && variables.p.restartPolicy == 'Always'
+      message: "keyproxy is a native sidecar (restartPolicy Always)."
+    - expression: |-
+        has(variables.c.env) && size(variables.c.env) == 3 && variables.c.env.all(e, !has(e.valueFrom) && e.name in ['BOB_API_KEY', 'BOB_GATEWAY_URL', 'NODE_EXTRA_CA_CERTS']) && variables.c.env.exists(e, e.name == 'BOB_API_KEY') && variables.c.env.exists(e, e.name == 'BOB_GATEWAY_URL' && e.value == 'https://localhost:8443') && variables.c.env.exists(e, e.name == 'NODE_EXTRA_CA_CERTS' && e.value == '/work/ca.crt')
+      message: "bob gets a fake key, the sidecar's address and the run CA, and reads nothing from a Secret."
+    - expression: |-
+        has(variables.p.env) && size(variables.p.env) == 3 && variables.p.env.exists(e, e.name == 'KEYPROXY_REAL_KEY' && has(e.valueFrom) && has(e.valueFrom.secretKeyRef) && e.valueFrom.secretKeyRef.key == 'api-key' && (e.valueFrom.secretKeyRef.name == object.metadata.name || e.valueFrom.secretKeyRef.name == {{ $helmKey | toJson }})) && variables.p.env.exists(e, e.name == 'KEYPROXY_FAKE_KEY' && has(e.valueFrom) && has(e.valueFrom.secretKeyRef) && e.valueFrom.secretKeyRef.name == object.metadata.name && e.valueFrom.secretKeyRef.key == 'fake-key') && variables.p.env.exists(e, e.name == 'KEYPROXY_UPSTREAM' && e.value == {{ $gateway | toJson }})
+      message: "keyproxy reads the key from Helm's Secret or the run's, and forwards to gatewayUrl only."
+    # Volumes and mounts are pinned by name, type, item, path and mode: a mount path,
+    # subPath, item path or mode is how a file of the run Secret could replace the
+    # code an image runs (second security review, 2026/11/03).
+    - expression: |-
+        object.metadata.name.startsWith('bob-run-')
+      message: "A run pod is named bob-run-*."
+    - expression: |-
+        has(object.spec.volumes) && size(object.spec.volumes) == 4 && object.spec.volumes.all(v, (v.name in ['home', 'tmp'] && has(v.emptyDir) && !has(v.secret)) || (v.name in ['work', 'proxy-tls'] && has(v.secret) && !has(v.emptyDir) && v.secret.secretName == object.metadata.name && (!has(v.secret.defaultMode) || v.secret.defaultMode == 420) && has(v.secret.items) && v.secret.items.all(i, i.path == i.key && !has(i.mode) && ((v.name == 'work' && i.key in ['prompt.txt', 'ca.crt']) || (v.name == 'proxy-tls' && i.key in ['tls.crt', 'tls.key']))))) && ['work', 'proxy-tls', 'home', 'tmp'].all(n, object.spec.volumes.exists(v, v.name == n))
+      message: "Volumes: work (prompt.txt, ca.crt), proxy-tls (tls.crt, tls.key), each item at its own name, mode 0644 (the default the API server sets), and the emptyDirs home and tmp."
+    - expression: |-
+        has(variables.c.volumeMounts) && size(variables.c.volumeMounts) == 3 && variables.c.volumeMounts.all(m, !has(m.subPath) && !has(m.subPathExpr) && !has(m.mountPropagation) && ((m.name == 'work' && m.mountPath == '/work' && has(m.readOnly) && m.readOnly) || (m.name == 'home' && m.mountPath == '/home/bob') || (m.name == 'tmp' && m.mountPath == '/tmp'))) && ['work', 'home', 'tmp'].all(n, variables.c.volumeMounts.exists(m, m.name == n))
+      message: "bob mounts work read-only at /work, home at /home/bob and tmp at /tmp, and nothing else."
+    - expression: |-
+        has(variables.p.volumeMounts) && size(variables.p.volumeMounts) == 1 && variables.p.volumeMounts[0].name == 'proxy-tls' && variables.p.volumeMounts[0].mountPath == '/run/keyproxy' && has(variables.p.volumeMounts[0].readOnly) && variables.p.volumeMounts[0].readOnly && !has(variables.p.volumeMounts[0].subPath) && !has(variables.p.volumeMounts[0].subPathExpr) && !has(variables.p.volumeMounts[0].mountPropagation)
+      message: "keyproxy mounts proxy-tls read-only at /run/keyproxy, and nothing else."
+    - expression: |-
+        [variables.c, variables.p].all(x, !has(x.workingDir) && has(x.securityContext) && has(x.securityContext.readOnlyRootFilesystem) && x.securityContext.readOnlyRootFilesystem)
+      message: "No workingDir, and a read-only root filesystem, in both containers."
+    - expression: |-
+        !has(object.spec.shareProcessNamespace) || object.spec.shareProcessNamespace == false
+      message: "The containers do not share a process namespace: bob may not read keyproxy's memory."
+    - expression: |-
+        has(object.spec.automountServiceAccountToken) && object.spec.automountServiceAccountToken == false
+      message: "A run pod mounts no ServiceAccount token."
+    - expression: |-
+        has(object.spec.activeDeadlineSeconds) && object.spec.activeDeadlineSeconds <= {{ $timeout }}
+      message: "A run pod has a deadline of at most timeoutSeconds."
+    - expression: |-
+        object.spec.restartPolicy == 'Never'
+      message: "A run pod runs once."
+    - expression: |-
+        !has(object.spec.nodeName) && !has(object.spec.hostAliases) && !has(object.spec.dnsConfig)
+      message: "No nodeName, hostAliases or dnsConfig."
+    # Scheduling is the cluster's: nothing here may choose a node, a runtime or a
+    # priority. The API server adds the default scheduler, and the two NoExecute
+    # tolerations of DefaultTolerationSeconds, before this policy sees the pod.
+    - expression: |-
+        !has(object.spec.nodeSelector) && !has(object.spec.affinity) && !has(object.spec.priorityClassName) && !has(object.spec.runtimeClassName) && !has(object.spec.topologySpreadConstraints) && (!has(object.spec.schedulerName) || object.spec.schedulerName == 'default-scheduler') && (!has(object.spec.tolerations) || object.spec.tolerations.all(t, has(t.key) && t.key in ['node.kubernetes.io/not-ready', 'node.kubernetes.io/unreachable'] && t.operator == 'Exists' && t.effect == 'NoExecute'))
+      message: "No nodeSelector, affinity, priority, runtime class, other scheduler or tolerations of its own."
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: issassist-bob-run-pods-{{ $ns }}
+spec:
+  policyName: issassist-bob-run-pods-{{ $ns }}
+  validationActions: ["Deny"]
+  matchResources:
+    namespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: {{ $ns }}
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: issassist-bob-run-secrets-{{ $ns }}
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE", "DELETE"]
+        resources: ["secrets"]
+  # Only the API's own account: Helm (whoever runs it) creates the key Secret.
+  matchConditions:
+    - name: the-api
+      expression: |-
+        request.userInfo.username == {{ $apiUser | toJson }}
+  validations:
+    - expression: |-
+        (request.operation == 'DELETE' ? oldObject : object).metadata.name.startsWith('bob-run-')
+      message: "The API may create, change and delete only its run Secrets (bob-run-*)."
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: issassist-bob-run-secrets-{{ $ns }}
+spec:
+  policyName: issassist-bob-run-secrets-{{ $ns }}
+  validationActions: ["Deny"]
+  matchResources:
+    namespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: {{ $ns }}
+{{- if $bob.apiKey }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: issassist-ai-bob-key
+  namespace: {{ $ns }}
+type: Opaque
+stringData:
+  api-key: {{ $bob.apiKey | quote }}
+{{- end }}
+{{- end }}
