@@ -111,7 +111,7 @@ pinned=(--set aiAnalysis.providers.bob.allowed=true --set "aiAnalysis.providers.
 expect "an image by tag only fails"                     'pinned by digest' -- "${bob[@]}" --set aiAnalysis.providers.bob.image=ghcr.io/isstech/issassist-bob-runner:1.5.0-3
 expect "the pod policy admits only the pinned image"    "variables.c.image == \"ghcr.io/isstech/issassist-bob-runner@${digest}\"" -- "${pinned[@]}"
 expect_section "the pod policy refuses a command"       ValidatingAdmissionPolicy issassist-bob-run-pods-ai-bob-runs '!has\(variables.c.command\)' -- "${pinned[@]}"
-expect_section "the pod policy allows one env var only" ValidatingAdmissionPolicy issassist-bob-run-pods-ai-bob-runs "size\(variables.c.env\) == 1 && variables.c.env\[0\].name == 'BOB_API_KEY'" -- "${pinned[@]}"
+expect_section "bob reads nothing from a Secret"       ValidatingAdmissionPolicy issassist-bob-run-pods-ai-bob-runs "variables.c.env.all\\(e, !has\\(e.valueFrom\\)" -- "${pinned[@]}"
 expect_section "the pod policy knows Helm's key name"   ValidatingAdmissionPolicy issassist-bob-run-pods-ai-bob-runs '== "issassist-ai-bob"\)' -- "${pinned[@]}" --set aiAnalysis.providers.bob.existingSecret=issassist-ai-bob
 expect_section "the pod deadline follows timeoutSeconds" ValidatingAdmissionPolicy issassist-bob-run-pods-ai-bob-runs 'activeDeadlineSeconds <= 240' -- "${pinned[@]}" --set aiAnalysis.providers.bob.timeoutSeconds=240
 expect_section "the pod policy denies, not warns"       ValidatingAdmissionPolicyBinding issassist-bob-run-pods-ai-bob-runs 'validationActions: \["Deny"\]' -- "${pinned[@]}"
@@ -120,8 +120,18 @@ expect_section "the Secret policy covers delete"        ValidatingAdmissionPolic
 expect_section "the API may touch only bob-run-* Secrets" ValidatingAdmissionPolicy issassist-bob-run-secrets-ai-bob-runs "startsWith\('bob-run-'\)" -- "${pinned[@]}"
 expect "a timeout over 900 s fails"                     'timeoutSeconds must be from 30 to 900' -- "${bob[@]}" --set aiAnalysis.providers.bob.timeoutSeconds=901
 expect_section "run pods are capped at maxConcurrent + 1" ResourceQuota bob-runs 'pods: "4"' -- "${bob[@]}" --set aiAnalysis.maxConcurrent=3
-expect_section "and so is their memory"                 ResourceQuota bob-runs 'limits.memory: "2048Mi"' -- "${bob[@]}" --set aiAnalysis.maxConcurrent=3
+expect_section "and so is their memory"                 ResourceQuota bob-runs 'limits.memory: "2560Mi"' -- "${bob[@]}" --set aiAnalysis.maxConcurrent=3
 for range in '0\.0\.0\.0/8' '192\.0\.0\.0/24' '198\.18\.0\.0/15'; do
   expect_section "run pods cannot reach ${range//\\/}"     NetworkPolicy bob-runs "- ${range}" -- "${bob[@]}"
 done
+# Mockup §9: the key sidecar.
+proxied=("${pinned[@]}" --set "aiAnalysis.providers.bob.keyproxyImage=ghcr.io/isstech/issassist-bob-keyproxy@${digest}")
+expect "the sidecar image by tag only fails"          'keyproxyImage must be pinned by digest' -- "${pinned[@]}" --set aiAnalysis.providers.bob.keyproxyImage=ghcr.io/isstech/issassist-bob-keyproxy:1
+expect "the pod policy admits only the pinned sidecar" "variables.p.image == \"ghcr.io/isstech/issassist-bob-keyproxy@${digest}\"" -- "${proxied[@]}"
+expect "the gateway defaults to IBM us-east"          'IA_AI_BOB_GATEWAY_URL: "https://api.us-east.bob.ibm.com"' --
+expect "the sidecar forwards to gatewayUrl only"      "e.name == 'KEYPROXY_UPSTREAM' && e.value == \"https://api.eu-de.example\"" -- "${proxied[@]}" --set aiAnalysis.providers.bob.gatewayUrl=https://api.eu-de.example
+expect "an http gateway fails"                        'gatewayUrl must be a plain https' -- "${bob[@]}" --set aiAnalysis.providers.bob.gatewayUrl=http://x.example
+expect "a gateway with credentials fails"             'gatewayUrl must be a plain https' -- "${bob[@]}" --set "aiAnalysis.providers.bob.gatewayUrl=https://u""@x.example"
+expect_section "no shared process namespace"          ValidatingAdmissionPolicy issassist-bob-run-pods-ai-bob-runs 'shareProcessNamespace == false' -- "${proxied[@]}"
+expect "the sidecar image reaches the API"            "IA_AI_BOB_KEYPROXY_IMAGE: \"ghcr.io/isstech/issassist-bob-keyproxy@${digest}\"" -- "${proxied[@]}"
 exit $fail

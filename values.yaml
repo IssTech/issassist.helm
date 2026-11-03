@@ -153,6 +153,13 @@ aiAnalysis:
       # namespace admits pods of exactly this image and nothing else. Empty: Bob is
       # not set up, and every run says so.
       image: ""
+      # The key sidecar (mockup §9): ghcr.io/isstech/issassist-bob-keyproxy@sha256:<digest>
+      # (issassist-api docker/bob-keyproxy). Bob gets a fake key; this container
+      # holds the real one and forwards Bob's three calls to gatewayUrl only.
+      keyproxyImage: ""
+      # Where Bob's calls go, through the sidecar: IBM's gateway for the region of the
+      # key's Bob instance (us-east now), or a customer's own Bob. https only.
+      gatewayUrl: "https://api.us-east.bob.ibm.com"
       # A run pod is stopped after this long (30 to 900).
       timeoutSeconds: 180
       maxTurns: 3

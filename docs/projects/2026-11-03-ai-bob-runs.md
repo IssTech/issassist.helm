@@ -96,3 +96,34 @@ Each of these deliberate breaks made at least one render case fail:
 - the Secret policy applied to everyone.
 
 The chart repo has no CI, so this runs by hand.
+
+## The key sidecar, and a cap per provider (2026/11/03, mockup §8 and §9)
+
+- **The run pod has two containers.**
+  - `keyproxy` is a native sidecar, `restartPolicy: Always` in `initContainers`. It
+    holds the key.
+  - `bob` holds a fake key, `BOB_GATEWAY_URL=https://localhost:8443` and the run CA.
+- **The pod policy pins both containers:**
+  - the images by digest (`keyproxyImage` must be pinned);
+  - no `command`, and no `args` on the proxy;
+  - exact env names and values; only `keyproxy` reads a Secret, and the
+    `KEYPROXY_UPSTREAM` value must equal `gatewayUrl`;
+  - the volume items per volume name, and the mounts per container;
+  - no `shareProcessNamespace`.
+- **The quota** is 640 Mi of memory limit per run pod: 512 Mi for Bob and 96 Mi for
+  the proxy.
+- **`gatewayUrl`** must be a plain https URL.
+- **Caps:** `dailyCap`/`dailyCapMax` per provider are rendered as
+  `IA_AI_<ID>_DAILY_CAP[_MAX]`. Read from an older release, they fall back to the
+  defaults in values.yaml. They replace `dailyCapBobcoins`.
+- **Tests:**
+  - render checks: 91 cases;
+  - live admission check: 38 cases on k3s v1.36.5, plus both pods the API builds;
+  - seven breaks of the new policy rules each made the live check fail:
+    - Bob allowed to read a Secret;
+    - any item for Bob;
+    - a shared process namespace;
+    - any upstream;
+    - Bob mounting anything;
+    - a sidecar `command`;
+    - Bob pointed past the sidecar.
