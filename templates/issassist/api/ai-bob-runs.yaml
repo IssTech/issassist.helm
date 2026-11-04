@@ -37,6 +37,11 @@ and `aiAnalysis.providers.bob.allowed: true`.
 * A ResourceQuota caps the run pods at `maxConcurrent` + 1 (one Test beside the
   analyses), their memory and their CPU.
 * A key set with `bob.apiKey` is rendered here, as `issassist-ai-bob-key`.
+* The images are pulled with one registry Secret here (`issassist.bobPullSecret`),
+  and the policy admits a pod naming that one only. From imageCredentials the chart
+  renders it; an operator's own (imageCredentials.existingSecret, or
+  bob.imagePullSecret) is created here by the operator. The pods cannot read it:
+  only the kubelet uses it.
 
 Read through `default dict`: `--reuse-values` rebases on the previous release's
 values, where these keys did not exist yet. Only `allowed: true` turns it on.
@@ -71,6 +76,7 @@ values, where these keys did not exist yet. Only `allowed: true` turns it on.
 {{- if and (hasKey $ai "maxConcurrent") (not (kindIs "invalid" $ai.maxConcurrent)) }}{{ $concurrent = int $ai.maxConcurrent }}{{ end }}
 {{- $helmKey := include "issassist.aiKeySecretName" (dict "id" "bob" "p" $bob) }}
 {{- $apiUser := printf "system:serviceaccount:%s:api" .Release.Namespace }}
+{{- $pull := include "issassist.bobPullSecret" . }}
 {{- $egress := $bob.egress | default "internet-443" }}
 {{- if ne $egress "internet-443" }}
 {{- fail "aiAnalysis.providers.bob.egress must be \"internet-443\"" }}
@@ -85,6 +91,18 @@ metadata:
     pod-security.kubernetes.io/enforce-version: latest
     pod-security.kubernetes.io/warn: restricted
     pod-security.kubernetes.io/audit: restricted
+{{- if and $pull (not .Values.imageCredentials.existingSecret) (not $bob.imagePullSecret) }}
+---
+# imageCredentials, as the release namespace has it: the run pods pull with it.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ $pull }}
+  namespace: {{ $ns }}
+type: kubernetes.io/dockerconfigjson
+data:
+  .dockerconfigjson: {{ template "imagePullSecret" . }}
+{{- end }}
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -257,6 +275,14 @@ spec:
     - expression: |-
         !has(object.spec.nodeName) && !has(object.spec.hostAliases) && !has(object.spec.dnsConfig)
       message: "No nodeName, hostAliases or dnsConfig."
+    - expression: |-
+{{- if $pull }}
+        !has(object.spec.imagePullSecrets) || (size(object.spec.imagePullSecrets) == 1 && object.spec.imagePullSecrets[0].name == {{ $pull | quote }})
+      message: "Images are pulled with the registry Secret {{ $pull }} only."
+{{- else }}
+        !has(object.spec.imagePullSecrets) || size(object.spec.imagePullSecrets) == 0
+      message: "Images are pulled without a registry Secret."
+{{- end }}
     # Scheduling is the cluster's: nothing here may choose a node, a runtime or a
     # priority. The API server adds the default scheduler, and the two NoExecute
     # tolerations of DefaultTolerationSeconds, before this policy sees the pod.

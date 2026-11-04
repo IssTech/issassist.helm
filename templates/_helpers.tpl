@@ -19,6 +19,29 @@ Two ways to supply registry credentials:
 {{- default "isstech-repository-auth" .Values.imageCredentials.existingSecret -}}
 {{- end }}
 
+{{/*
+The registry Secret IBM Bob's run pods pull their images with, in the run namespace
+(#463 slice 4, 2026/11/04): "" for none.
+  * bob.imagePullSecret set: that name ("none": images the nodes can pull without one);
+  * else imageCredentials.existingSecret: the same name, which the operator also
+    creates in the run namespace;
+  * else isstech-repository-auth, which the chart renders there from
+    imageCredentials, as it does in the release namespace.
+*/}}
+{{- define "issassist.bobPullSecret" -}}
+{{- $bob := ((.Values.aiAnalysis | default dict).providers | default dict).bob | default dict -}}
+{{- $name := toString ($bob.imagePullSecret | default "") -}}
+{{- if eq $name "none" -}}
+{{- else if $name -}}
+{{- if not (regexMatch "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$" $name) -}}
+{{- fail "aiAnalysis.providers.bob.imagePullSecret must be a Secret name (a DNS label) or \"none\"" -}}
+{{- end -}}
+{{- $name -}}
+{{- else -}}
+{{- include "issassist.imagePullSecretName" . -}}
+{{- end -}}
+{{- end }}
+
 {{- define "imagePullSecret" }}
 {{- with .Values.imageCredentials }}
 {{- printf "{\"auths\":{\"%s\":{\"username\":\"%s\",\"password\":\"%s\",\"auth\":\"%s\"}}}" .registry .username .password (printf "%s:%s" .username .password | b64enc) | b64enc }}

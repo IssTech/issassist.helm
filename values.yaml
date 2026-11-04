@@ -157,6 +157,12 @@ aiAnalysis:
       # with clusterScoped.create. true or false: Bob decides alone, so it can be set up
       # where the restore tests' ClusterRole is not wanted.
       clusterResources: ""
+      # The registry Secret, in the run namespace, the runner and keyproxy images are
+      # pulled with. Empty: the same as the release's. With imageCredentials.username/
+      # password the chart renders it there; with imageCredentials.existingSecret,
+      # create a Secret of that name in the run namespace too. "none": the nodes pull
+      # the images without one (a public or node-authenticated mirror).
+      imagePullSecret: ""
       namespace: "ai-bob-runs"
       # The issassist-bob-runner image (issassist-api docker/bob-runner), pinned by
       # digest: ghcr.io/isstech/issassist-bob-runner@sha256:<digest>. The run

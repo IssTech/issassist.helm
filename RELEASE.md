@@ -12,6 +12,28 @@ in `docs/projects/<date>-<slug>.md`, linked from the entry.
 
 ## Next chart release — in development
 
+### IBM Bob: the run pods pull their images with a registry Secret
+
+**What it is.** IBM Bob's run pods, in `aiAnalysis.providers.bob.namespace`, now pull the
+runner and key sidecar images with a registry Secret, the way the API and web GUI do. Before,
+on a cluster that needs credentials for ghcr.io, no Bob run could start.
+
+**Where it is.** `aiAnalysis.providers.bob.imagePullSecret` (new), and
+`imageCredentials`.
+
+**What changed for them.**
+
+- **With `imageCredentials.username`/`password`**, the chart renders the same Secret in Bob's
+  run namespace too. Nothing to do.
+- **With `imageCredentials.existingSecret`, create a Secret of that name in Bob's run
+  namespace as well** (by default `ai-bob-runs`), the same way as in the release
+  namespace. Or name another one there with `bob.imagePullSecret`.
+- `bob.imagePullSecret: none` pulls without one, for a public or node-authenticated mirror.
+- The admission policy admits a run pod only with that one Secret, or none.
+
+**Where the detail is.** issassist-api `docs/projects/2026-10-29-ai-analysis-api.md`,
+"Slice 4: the first runs on staging (2026/11/04)".
+
 ### IBM Bob: regions to choose from, and a switch of Bob's own for its cluster resources
 
 **What it is.** Two changes to `aiAnalysis.providers.bob`:
