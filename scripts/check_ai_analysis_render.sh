@@ -167,4 +167,21 @@ expect_section "bob's mounts are pinned by path"      ValidatingAdmissionPolicy 
 expect_section "keyproxy's mount is pinned by path"   ValidatingAdmissionPolicy issassist-bob-run-pods-ai-bob-runs "variables.p.volumeMounts\\[0\\].mountPath == '/run/keyproxy'" -- "${proxied[@]}"
 expect_section "an item's path is its key"            ValidatingAdmissionPolicy issassist-bob-run-pods-ai-bob-runs 'i.path == i.key && !has.i.mode.' -- "${proxied[@]}"
 expect_section "a run pod is named bob-run-*"         ValidatingAdmissionPolicy issassist-bob-run-pods-ai-bob-runs "startsWith\\('bob-run-'\\)" -- "${proxied[@]}"
+# The run pods' registry Secret (staging, 2026/11/04: the images are private).
+expect "the run pods pull with the release's Secret"  'IA_AI_BOB_PULL_SECRET: "isstech-repository-auth"' --
+expect_section "which the chart renders in the run namespace" Secret isstech-repository-auth 'namespace: ai-bob-runs' -- "${proxied[@]}"
+expect "an operator's own Secret is named"            'IA_AI_BOB_PULL_SECRET: "ghcr-pull"' -- --set imageCredentials.existingSecret=ghcr-pull
+expect_not "and the chart renders none of its own"    'name: isstech-repository-auth' -- "${proxied[@]}" --set imageCredentials.existingSecret=ghcr-pull
+expect_section "the policy admits that Secret only"   ValidatingAdmissionPolicy issassist-bob-run-pods-ai-bob-runs 'imagePullSecrets\[0\].name == "ghcr-pull"' -- "${proxied[@]}" --set imageCredentials.existingSecret=ghcr-pull
+expect "bob.imagePullSecret wins"                     'IA_AI_BOB_PULL_SECRET: "bob-pull"' -- --set aiAnalysis.providers.bob.imagePullSecret=bob-pull
+expect "none means no Secret"                         'IA_AI_BOB_PULL_SECRET: ""' -- --set aiAnalysis.providers.bob.imagePullSecret=none
+expect_section "and then the policy admits none"      ValidatingAdmissionPolicy issassist-bob-run-pods-ai-bob-runs 'size.object.spec.imagePullSecrets. == 0' -- "${proxied[@]}" --set aiAnalysis.providers.bob.imagePullSecret=none
+expect "a pull Secret that is not a name fails"       'imagePullSecret must be a Secret name' -- "${bob[@]}" --set aiAnalysis.providers.bob.imagePullSecret=Bad_Name
+expect "but never stops an upgrade with Bob off"      'IA_AI_BOB_PULL_SECRET: ""' -- --set aiAnalysis.providers.bob.imagePullSecret=Bad_Name
+expect "a Secret name with dots is fine"              'IA_AI_BOB_PULL_SECRET: "ghcr.pull"' -- --set imageCredentials.existingSecret=ghcr.pull
+expect "a pull Secret named bob-run-* fails"          'must not start with bob-run-' -- "${bob[@]}" --set aiAnalysis.providers.bob.imagePullSecret=bob-run-pull
+expect "an existingSecret named bob-run-* fails too"  'must not start with bob-run-' -- "${bob[@]}" --set imageCredentials.existingSecret=bob-run-pull
+expect "an existingSecret that is not a name fails"   'imagePullSecret must be a Secret name' -- "${bob[@]}" --set imageCredentials.existingSecret=Bad_Name
+expect "Bob's key Secret as pull Secret fails"        "must not start with bob-run- or be Bob's key" -- "${bob[@]}" --set aiAnalysis.providers.bob.existingSecret=my-bob --set aiAnalysis.providers.bob.imagePullSecret=my-bob
+expect "a release from before the key renders"        'IA_AI_BOB_PULL_SECRET: "isstech-repository-auth"' -- --set aiAnalysis.providers.bob.imagePullSecret=null
 exit $fail

@@ -19,6 +19,36 @@ Two ways to supply registry credentials:
 {{- default "isstech-repository-auth" .Values.imageCredentials.existingSecret -}}
 {{- end }}
 
+{{/*
+The registry Secret IBM Bob's run pods pull their images with, in the run namespace
+(#463 slice 4, 2026/11/04): "" for none.
+  * bob.imagePullSecret set: that name ("none": images the nodes can pull without one);
+  * else imageCredentials.existingSecret: the same name, which the operator also
+    creates in the run namespace;
+  * else isstech-repository-auth, which the chart renders there from
+    imageCredentials, as it does in the release namespace.
+*/}}
+{{- define "issassist.bobPullSecret" -}}
+{{- $bob := ((.Values.aiAnalysis | default dict).providers | default dict).bob | default dict -}}
+{{- $name := toString ($bob.imagePullSecret | default "") -}}
+{{- if ne $name "none" -}}
+{{- if not $name -}}{{- $name = include "issassist.imagePullSecretName" . -}}{{- end -}}
+{{- $problem := "" -}}
+{{- if or (gt (len $name) 253) (not (regexMatch "^[a-z0-9]([-a-z0-9]*[a-z0-9])?([.][a-z0-9]([-a-z0-9]*[a-z0-9])?)*$" $name)) -}}
+{{- $problem = "aiAnalysis.providers.bob.imagePullSecret must be a Secret name or \"none\"" -}}
+{{- /* The API's account may create and delete bob-run-* Secrets, and holds Helm's key. */ -}}
+{{- else if or (hasPrefix "bob-run-" $name) (eq $name (include "issassist.aiKeySecretName" (dict "id" "bob" "p" $bob))) -}}
+{{- $problem = "aiAnalysis.providers.bob.imagePullSecret must not start with bob-run- or be Bob's key Secret" -}}
+{{- end -}}
+{{- /* Refused only where Bob runs: an upgrade with Bob off never stops on it. */ -}}
+{{- if $problem -}}
+{{- if eq (toString $bob.allowed) "true" -}}{{- fail $problem -}}{{- end -}}
+{{- else -}}
+{{- $name -}}
+{{- end -}}
+{{- end -}}
+{{- end }}
+
 {{- define "imagePullSecret" }}
 {{- with .Values.imageCredentials }}
 {{- printf "{\"auths\":{\"%s\":{\"username\":\"%s\",\"password\":\"%s\",\"auth\":\"%s\"}}}" .registry .username .password (printf "%s:%s" .username .password | b64enc) | b64enc }}
