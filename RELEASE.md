@@ -12,6 +12,33 @@ in `docs/projects/<date>-<slug>.md`, linked from the entry.
 
 ## Next chart release — in development
 
+### IBM Bob: regions to choose from, and a switch of Bob's own for its cluster resources
+
+**What it is.** Two changes to `aiAnalysis.providers.bob`:
+
+- **`regions`** lists the regions an operator can choose between in the web GUI, as region
+  name and IBM gateway address. By default these are us-east, eu-de and jp-tok. Run pods may
+  forward to these addresses and no other: the admission policy checks it.
+- **`clusterResources`** decides whether Bob's run namespace and admission policies are
+  rendered. Empty follows `clusterScoped.create`, as before. `true` renders them without
+  `clusterScoped.create`, so Bob can be set up where the restore tests' ClusterRole is not
+  wanted. `false` leaves them out.
+
+**Where it is.** `values.yaml`: `aiAnalysis.providers.bob.regions`, `.region`,
+`.clusterResources`, `.gatewayUrl`.
+
+**What changed for them.**
+
+- **`region` now defaults to eu-de**, and must be one of `regions` where Bob is allowed.
+- **`gatewayUrl` now defaults to empty.** Set it only for a customer's own Bob: it is then
+  the only address, and nothing can be chosen in the web GUI. A release upgraded with
+  `--reuse-values` that still carries IBM's us-east address keeps us-east as its default,
+  and the other regions can still be chosen.
+- A region address must be plain `https://`, with no credentials and no query string, or
+  rendering fails.
+
+**Where the detail is.** issassist-api's `docs/projects/2026-10-29-ai-analysis-api.md`, slice 4.
+
 ### `aiAnalysis.providers.isstech` removed
 
 **What it is.** The AI analysis provider "IssTech" (the IssAssist LLM reached through the

@@ -133,8 +133,29 @@ done
 proxied=("${pinned[@]}" --set "aiAnalysis.providers.bob.keyproxyImage=ghcr.io/isstech/issassist-bob-keyproxy@${digest}")
 expect "the sidecar image by tag only fails"          'keyproxyImage must be pinned by digest' -- "${pinned[@]}" --set aiAnalysis.providers.bob.keyproxyImage=ghcr.io/isstech/issassist-bob-keyproxy:1
 expect "the pod policy admits only the pinned sidecar" "variables.p.image == \"ghcr.io/isstech/issassist-bob-keyproxy@${digest}\"" -- "${proxied[@]}"
-expect "the gateway defaults to IBM us-east"          'IA_AI_BOB_GATEWAY_URL: "https://api.us-east.bob.ibm.com"' --
-expect "the sidecar forwards to gatewayUrl only"      "e.name == 'KEYPROXY_UPSTREAM' && e.value == \"https://api.eu-de.example\"" -- "${proxied[@]}" --set aiAnalysis.providers.bob.gatewayUrl=https://api.eu-de.example
+# Regions chosen in the web GUI (decided 2026/11/04).
+expect "the default region is eu-de"                  'IA_AI_BOB_REGION: "eu-de"' --
+expect "the web GUI is offered IBM's three regions"   'IA_AI_BOB_REGIONS: .*eu-de.*https://api.eu-de.bob.ibm.com.*jp-tok.*us-east' --
+expect "no fixed gateway by default"                  'IA_AI_BOB_GATEWAY_URL: ""' --
+expect "the sidecar forwards to a listed region only" "e.name == 'KEYPROXY_UPSTREAM' && e.value in \[\"https://api.eu-de.bob.ibm.com\",\"https://api.jp-tok.bob.ibm.com\",\"https://api.us-east.bob.ibm.com\"\]" -- "${proxied[@]}"
+expect "a customer's own Bob is the only address"     "e.name == 'KEYPROXY_UPSTREAM' && e.value in \[\"https://bob.customer.example\"\]" -- "${proxied[@]}" --set aiAnalysis.providers.bob.gatewayUrl=https://bob.customer.example
+expect "and then nothing can be chosen"               'IA_AI_BOB_REGIONS: "[{][}]"' -- --set aiAnalysis.providers.bob.gatewayUrl=https://bob.customer.example
+expect "the old us-east default is a region again"    'IA_AI_BOB_REGION: "us-east"' -- --set aiAnalysis.providers.bob.gatewayUrl=https://api.us-east.bob.ibm.com
+expect "an old release without regions gets IBM's"    'IA_AI_BOB_REGIONS: .*us-east' -- --set aiAnalysis.providers.bob.regions=null
+expect "an unlisted region fails where Bob is on"     'region must be one of' -- "${bob[@]}" --set aiAnalysis.providers.bob.region=frankfurt
+expect "but never stops an upgrade where Bob is off"  'IA_AI_BOB_REGION: ""' -- --set aiAnalysis.providers.bob.region=frankfurt
+expect "an http region fails"                         'every address must be a plain https' -- --set aiAnalysis.providers.bob.regions.eu-de=http://x.example
+expect "a region address with credentials fails"      'every address must be a plain https' -- --set "aiAnalysis.providers.bob.regions.eu-de=https://u""@x.example"
+expect "a region address with a fragment fails"       'every address must be a plain https' -- --set "aiAnalysis.providers.bob.regions.eu-de=https://x.example#y"
+expect "a region address without a host fails"        'every address must be a plain https' -- --set "aiAnalysis.providers.bob.regions.eu-de=https://"
+expect "a gatewayUrl with a space fails"              'gatewayUrl must be a plain https' -- --set "aiAnalysis.providers.bob.gatewayUrl=https://x.example/a b"
+expect "a gatewayUrl with a port and path is fine"    'IA_AI_BOB_GATEWAY_URL: "https://bob.customer.example:8443/v1"' -- --set "aiAnalysis.providers.bob.gatewayUrl=https://bob.customer.example:8443/v1"
+expect "a region name with capitals fails"            'region name is lowercase' -- --set aiAnalysis.providers.bob.regions.EU=https://x.example
+# Bob's own switch for its cluster-scoped resources (decided 2026/11/04).
+expect "clusterResources true renders Bob without clusterScoped" 'name: ai-bob-runs' -- "${bob[@]}" --set clusterScoped.create=false --set aiAnalysis.providers.bob.clusterResources=true
+expect_not "and not the restore tests' ClusterRole"  'name: sp-restore-tester' -- "${bob[@]}" --set clusterScoped.create=false --set aiAnalysis.providers.bob.clusterResources=true
+expect_not "clusterResources false keeps Bob out"     'name: ai-bob-runs' -- "${bob[@]}" --set aiAnalysis.providers.bob.clusterResources=false
+expect "a clusterResources of yes fails"              'clusterResources must be true, false or empty' -- "${bob[@]}" --set aiAnalysis.providers.bob.clusterResources=yes
 expect "an http gateway fails"                        'gatewayUrl must be a plain https' -- "${bob[@]}" --set aiAnalysis.providers.bob.gatewayUrl=http://x.example
 expect "a gateway with credentials fails"             'gatewayUrl must be a plain https' -- "${bob[@]}" --set "aiAnalysis.providers.bob.gatewayUrl=https://u""@x.example"
 expect_section "no shared process namespace"          ValidatingAdmissionPolicy issassist-bob-run-pods-ai-bob-runs 'shareProcessNamespace == false' -- "${proxied[@]}"

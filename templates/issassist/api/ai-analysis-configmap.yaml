@@ -72,8 +72,11 @@ data:
   IA_AI_BOB_NAMESPACE: {{ $bob.namespace | default "ai-bob-runs" | quote }}
   IA_AI_BOB_IMAGE: {{ $bob.image | default "" | quote }}
   IA_AI_BOB_KEYPROXY_IMAGE: {{ $bob.keyproxyImage | default "" | quote }}
-  IA_AI_BOB_GATEWAY_URL: {{ $bob.gatewayUrl | default "https://api.us-east.bob.ibm.com" | quote }}
-  IA_AI_BOB_REGION: {{ $bob.region | default "" | quote }}
+  {{- $gw := include "issassist.bobGateways" $bob | fromJson }}
+  {{- /* The regions the web GUI offers, the default, and a customer's own fixed address. */}}
+  IA_AI_BOB_REGIONS: {{ $gw.regions | toJson | quote }}
+  IA_AI_BOB_REGION: {{ $gw.region | quote }}
+  IA_AI_BOB_GATEWAY_URL: {{ $gw.fixed | quote }}
   IA_AI_BOB_TIMEOUT_SECONDS: {{ ternary $bob.timeoutSeconds 180 (hasKey $bob "timeoutSeconds") | toString | quote }}
   IA_AI_BOB_MAX_TURNS: {{ ternary $bob.maxTurns 3 (hasKey $bob "maxTurns") | toString | quote }}
   IA_AI_BOB_MAX_COST_PER_RUN_BOBCOINS: {{ ternary $bob.maxCostPerRunBobcoins 5 (hasKey $bob "maxCostPerRunBobcoins") | toString | quote }}

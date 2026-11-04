@@ -144,9 +144,19 @@ aiAnalysis:
       # Without either, it can be entered in the web GUI.
       existingSecret: ""
       apiKey: ""
-      # Shown in the web GUI. Where Bob runs follows the Bob instance the key
-      # belongs to; this does not change it.
-      region: "us-east"
+      # The regions an operator can choose between in the web GUI (Settings › AI
+      # analysis › IBM Bob), each IBM's gateway for it. Run pods may forward to these
+      # addresses and no other. A key belongs to one Bob instance, in one region.
+      regions:
+        us-east: "https://api.us-east.bob.ibm.com"
+        eu-de: "https://api.eu-de.bob.ibm.com"
+        jp-tok: "https://api.jp-tok.bob.ibm.com"
+      # The region until someone chooses another in the web GUI. One of `regions`.
+      region: "eu-de"
+      # Bob's run namespace and admission policies are cluster-scoped. Empty: rendered
+      # with clusterScoped.create. true or false: Bob decides alone, so it can be set up
+      # where the restore tests' ClusterRole is not wanted.
+      clusterResources: ""
       namespace: "ai-bob-runs"
       # The issassist-bob-runner image (issassist-api docker/bob-runner), pinned by
       # digest: ghcr.io/isstech/issassist-bob-runner@sha256:<digest>. The run
@@ -157,9 +167,10 @@ aiAnalysis:
       # (issassist-api docker/bob-keyproxy). Bob gets a fake key; this container
       # holds the real one and forwards Bob's three calls to gatewayUrl only.
       keyproxyImage: ""
-      # Where Bob's calls go, through the sidecar: IBM's gateway for the region of the
-      # key's Bob instance (us-east now), or a customer's own Bob. https only.
-      gatewayUrl: "https://api.us-east.bob.ibm.com"
+      # A customer's own Bob (on-prem), https only. Set, it is the only address, the
+      # region above is only shown, and nothing can be chosen in the web GUI. Empty:
+      # IBM's gateway for the chosen region.
+      gatewayUrl: ""
       # A run pod is stopped after this long (30 to 900).
       timeoutSeconds: 180
       maxTurns: 3

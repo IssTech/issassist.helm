@@ -68,3 +68,56 @@ issassist-ai-{{ .id }}-key
 {{ trim (toString $p.existingSecret) }}
 {{- end -}}
 {{- end }}
+
+{{/*
+IBM Bob's gateways (decided 2026/11/04), as JSON: {"regions": {name: address},
+"region": the default, "fixed": a customer's own address or ""}. The web GUI
+chooses among `regions`; the admission policy admits these addresses and no other.
+
+`regions` falls back to IBM's three: --reuse-values rebases on a release from
+before the key existed. A `gatewayUrl` that is one of them (the old default) is
+that region; any other is fixed, and then nothing can be chosen. Called with the
+bob values map.
+*/}}
+{{- define "issassist.bobGateways" -}}
+{{- $bob := . | default dict -}}
+{{- /* A host, an optional port and an optional path: no credentials, query, fragment
+       or whitespace (security review, 2026/11/04). */ -}}
+{{- $plain := "^https://[a-z0-9]([a-z0-9.-]*[a-z0-9])?(:[0-9]{1,5})?(/[A-Za-z0-9._~/-]*)?$" -}}
+{{- $regions := $bob.regions | default (dict "us-east" "https://api.us-east.bob.ibm.com" "eu-de" "https://api.eu-de.bob.ibm.com" "jp-tok" "https://api.jp-tok.bob.ibm.com") -}}
+{{- if not (kindIs "map" $regions) }}{{ fail "aiAnalysis.providers.bob.regions must be a map of region to https:// address" }}{{ end -}}
+{{- range $name, $url := $regions -}}
+{{- if not (regexMatch "^[a-z0-9][a-z0-9-]{0,31}$" $name) }}{{ fail "aiAnalysis.providers.bob.regions: a region name is lowercase letters, digits and -" }}{{ end -}}
+{{- if or (not (kindIs "string" $url)) (not (regexMatch $plain $url)) }}{{ fail "aiAnalysis.providers.bob.regions: every address must be a plain https:// URL" }}{{ end -}}
+{{- end -}}
+{{- $fixed := $bob.gatewayUrl | default "" -}}
+{{- if and $fixed (not (regexMatch $plain $fixed)) }}{{ fail "aiAnalysis.providers.bob.gatewayUrl must be a plain https:// URL" }}{{ end -}}
+{{- $region := $bob.region | default "eu-de" -}}
+{{- range $name, $url := $regions }}{{ if eq $url $fixed }}{{ $region = $name }}{{ $fixed = "" }}{{ end }}{{ end -}}
+{{- if $fixed -}}
+{{- $regions = dict -}}
+{{- else if not (hasKey $regions $region) -}}
+{{- /* Fails only where Bob is allowed: elsewhere an old free-text region must not
+       stop an upgrade. Unlisted, nothing is chosen and Bob says it is not set up. */ -}}
+{{- if eq (toString $bob.allowed) "true" }}{{ fail "aiAnalysis.providers.bob.region must be one of aiAnalysis.providers.bob.regions" }}{{ end -}}
+{{- $region = "" -}}
+{{- end -}}
+{{- dict "regions" $regions "region" $region "fixed" $fixed | toJson -}}
+{{- end }}
+
+{{/*
+Whether IBM Bob's run namespace and admission policies are rendered: "true" or "".
+`aiAnalysis.providers.bob.clusterResources` true or false decides; unset, it follows
+`clusterScoped.create`. Its own switch (decided 2026/11/04) so that Bob can be set up
+where the restore tests' ClusterRole is not wanted. Called with the root context.
+*/}}
+{{- define "issassist.bobClusterResources" -}}
+{{- $bob := ((.Values.aiAnalysis | default dict).providers | default dict).bob | default dict -}}
+{{- $scoped := .Values.clusterScoped | default dict -}}
+{{- $own := $bob.clusterResources -}}
+{{- if and (hasKey $bob "clusterResources") (not (kindIs "invalid" $own)) (ne (toString $own) "") -}}
+{{- if eq (toString $own) "true" }}true{{ else if ne (toString $own) "false" }}{{ fail "aiAnalysis.providers.bob.clusterResources must be true, false or empty" }}{{ end -}}
+{{- else if eq (toString $scoped.create) "true" -}}
+true
+{{- end -}}
+{{- end }}
