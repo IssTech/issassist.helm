@@ -21,7 +21,8 @@ and `aiAnalysis.providers.bob.allowed: true`.
   - every env var by name and value: `bob` gets a fake key, the address
     https://localhost:8443 and the run CA, and reads nothing from a Secret;
     `keyproxy` reads the key (Helm's Secret or the run's) and the fake key, and
-    forwards to `gatewayUrl` only;
+    forwards to one of the listed regions' addresses (`regions`), or to a fixed
+    `gatewayUrl`, only;
   - every volume and mount exactly: `work` (prompt.txt, ca.crt) read-only at
     /work and the emptyDirs at /home/bob and /tmp for bob; `proxy-tls` (tls.crt,
     tls.key) read-only at /run/keyproxy for keyproxy; each item at a path equal
@@ -40,9 +41,8 @@ and `aiAnalysis.providers.bob.allowed: true`.
 Read through `default dict`: `--reuse-values` rebases on the previous release's
 values, where these keys did not exist yet. Only `allowed: true` turns it on.
 */}}
-{{- $scoped := .Values.clusterScoped | default dict }}
 {{- $bob := ((.Values.aiAnalysis | default dict).providers | default dict).bob | default dict }}
-{{- if and .Values.api.enabled (eq (toString $scoped.create) "true") (eq (toString $bob.allowed) "true") }}
+{{- if and .Values.api.enabled (include "issassist.bobClusterResources" .) (eq (toString $bob.allowed) "true") }}
 {{- $ns := $bob.namespace | default "ai-bob-runs" }}
 {{- if eq $ns .Release.Namespace }}
 {{- fail "aiAnalysis.providers.bob.namespace must not be the release's own namespace" }}
@@ -59,10 +59,8 @@ values, where these keys did not exist yet. Only `allowed: true` turns it on.
 {{- if and $proxyImage (not (contains "@sha256:" $proxyImage)) }}
 {{- fail "aiAnalysis.providers.bob.keyproxyImage must be pinned by digest (…@sha256:…)" }}
 {{- end }}
-{{- $gateway := $bob.gatewayUrl | default "https://api.us-east.bob.ibm.com" }}
-{{- if or (not (hasPrefix "https://" $gateway)) (contains "@" $gateway) (contains "?" $gateway) }}
-{{- fail "aiAnalysis.providers.bob.gatewayUrl must be a plain https:// URL" }}
-{{- end }}
+{{- $gw := include "issassist.bobGateways" $bob | fromJson }}
+{{- $gateways := ternary (list $gw.fixed) (values $gw.regions | sortAlpha) (ne $gw.fixed "") }}
 {{- $timeout := 180 }}
 {{- if hasKey $bob "timeoutSeconds" }}{{ $timeout = int $bob.timeoutSeconds }}{{ end }}
 {{- if or (lt $timeout 30) (gt $timeout 900) }}
@@ -224,8 +222,8 @@ spec:
         has(variables.c.env) && size(variables.c.env) == 3 && variables.c.env.all(e, !has(e.valueFrom) && e.name in ['BOB_API_KEY', 'BOB_GATEWAY_URL', 'NODE_EXTRA_CA_CERTS']) && variables.c.env.exists(e, e.name == 'BOB_API_KEY') && variables.c.env.exists(e, e.name == 'BOB_GATEWAY_URL' && e.value == 'https://localhost:8443') && variables.c.env.exists(e, e.name == 'NODE_EXTRA_CA_CERTS' && e.value == '/work/ca.crt')
       message: "bob gets a fake key, the sidecar's address and the run CA, and reads nothing from a Secret."
     - expression: |-
-        has(variables.p.env) && size(variables.p.env) == 3 && variables.p.env.exists(e, e.name == 'KEYPROXY_REAL_KEY' && has(e.valueFrom) && has(e.valueFrom.secretKeyRef) && e.valueFrom.secretKeyRef.key == 'api-key' && (e.valueFrom.secretKeyRef.name == object.metadata.name || e.valueFrom.secretKeyRef.name == {{ $helmKey | toJson }})) && variables.p.env.exists(e, e.name == 'KEYPROXY_FAKE_KEY' && has(e.valueFrom) && has(e.valueFrom.secretKeyRef) && e.valueFrom.secretKeyRef.name == object.metadata.name && e.valueFrom.secretKeyRef.key == 'fake-key') && variables.p.env.exists(e, e.name == 'KEYPROXY_UPSTREAM' && e.value == {{ $gateway | toJson }})
-      message: "keyproxy reads the key from Helm's Secret or the run's, and forwards to gatewayUrl only."
+        has(variables.p.env) && size(variables.p.env) == 3 && variables.p.env.exists(e, e.name == 'KEYPROXY_REAL_KEY' && has(e.valueFrom) && has(e.valueFrom.secretKeyRef) && e.valueFrom.secretKeyRef.key == 'api-key' && (e.valueFrom.secretKeyRef.name == object.metadata.name || e.valueFrom.secretKeyRef.name == {{ $helmKey | toJson }})) && variables.p.env.exists(e, e.name == 'KEYPROXY_FAKE_KEY' && has(e.valueFrom) && has(e.valueFrom.secretKeyRef) && e.valueFrom.secretKeyRef.name == object.metadata.name && e.valueFrom.secretKeyRef.key == 'fake-key') && variables.p.env.exists(e, e.name == 'KEYPROXY_UPSTREAM' && e.value in {{ $gateways | toJson }})
+      message: "keyproxy reads the key from Helm's Secret or the run's, and forwards to a listed Bob gateway only."
     # Volumes and mounts are pinned by name, type, item, path and mode: a mount path,
     # subPath, item path or mode is how a file of the run Secret could replace the
     # code an image runs (second security review, 2026/11/03).
