@@ -31,14 +31,21 @@ The registry Secret IBM Bob's run pods pull their images with, in the run namesp
 {{- define "issassist.bobPullSecret" -}}
 {{- $bob := ((.Values.aiAnalysis | default dict).providers | default dict).bob | default dict -}}
 {{- $name := toString ($bob.imagePullSecret | default "") -}}
-{{- if eq $name "none" -}}
-{{- else if $name -}}
-{{- if not (regexMatch "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$" $name) -}}
-{{- fail "aiAnalysis.providers.bob.imagePullSecret must be a Secret name (a DNS label) or \"none\"" -}}
+{{- if ne $name "none" -}}
+{{- if not $name -}}{{- $name = include "issassist.imagePullSecretName" . -}}{{- end -}}
+{{- $problem := "" -}}
+{{- if or (gt (len $name) 253) (not (regexMatch "^[a-z0-9]([-a-z0-9]*[a-z0-9])?([.][a-z0-9]([-a-z0-9]*[a-z0-9])?)*$" $name)) -}}
+{{- $problem = "aiAnalysis.providers.bob.imagePullSecret must be a Secret name or \"none\"" -}}
+{{- /* The API's account may create and delete bob-run-* Secrets, and holds Helm's key. */ -}}
+{{- else if or (hasPrefix "bob-run-" $name) (eq $name (include "issassist.aiKeySecretName" (dict "id" "bob" "p" $bob))) -}}
+{{- $problem = "aiAnalysis.providers.bob.imagePullSecret must not start with bob-run- or be Bob's key Secret" -}}
 {{- end -}}
-{{- $name -}}
+{{- /* Refused only where Bob runs: an upgrade with Bob off never stops on it. */ -}}
+{{- if $problem -}}
+{{- if eq (toString $bob.allowed) "true" -}}{{- fail $problem -}}{{- end -}}
 {{- else -}}
-{{- include "issassist.imagePullSecretName" . -}}
+{{- $name -}}
+{{- end -}}
 {{- end -}}
 {{- end }}
 

@@ -176,6 +176,12 @@ expect_section "the policy admits that Secret only"   ValidatingAdmissionPolicy 
 expect "bob.imagePullSecret wins"                     'IA_AI_BOB_PULL_SECRET: "bob-pull"' -- --set aiAnalysis.providers.bob.imagePullSecret=bob-pull
 expect "none means no Secret"                         'IA_AI_BOB_PULL_SECRET: ""' -- --set aiAnalysis.providers.bob.imagePullSecret=none
 expect_section "and then the policy admits none"      ValidatingAdmissionPolicy issassist-bob-run-pods-ai-bob-runs 'size.object.spec.imagePullSecrets. == 0' -- "${proxied[@]}" --set aiAnalysis.providers.bob.imagePullSecret=none
-expect "a pull Secret that is not a name fails"       'imagePullSecret must be a Secret name' -- --set aiAnalysis.providers.bob.imagePullSecret=Bad_Name
+expect "a pull Secret that is not a name fails"       'imagePullSecret must be a Secret name' -- "${bob[@]}" --set aiAnalysis.providers.bob.imagePullSecret=Bad_Name
+expect "but never stops an upgrade with Bob off"      'IA_AI_BOB_PULL_SECRET: ""' -- --set aiAnalysis.providers.bob.imagePullSecret=Bad_Name
+expect "a Secret name with dots is fine"              'IA_AI_BOB_PULL_SECRET: "ghcr.pull"' -- --set imageCredentials.existingSecret=ghcr.pull
+expect "a pull Secret named bob-run-* fails"          'must not start with bob-run-' -- "${bob[@]}" --set aiAnalysis.providers.bob.imagePullSecret=bob-run-pull
+expect "an existingSecret named bob-run-* fails too"  'must not start with bob-run-' -- "${bob[@]}" --set imageCredentials.existingSecret=bob-run-pull
+expect "an existingSecret that is not a name fails"   'imagePullSecret must be a Secret name' -- "${bob[@]}" --set imageCredentials.existingSecret=Bad_Name
+expect "Bob's key Secret as pull Secret fails"        "must not start with bob-run- or be Bob's key" -- "${bob[@]}" --set aiAnalysis.providers.bob.existingSecret=my-bob --set aiAnalysis.providers.bob.imagePullSecret=my-bob
 expect "a release from before the key renders"        'IA_AI_BOB_PULL_SECRET: "isstech-repository-auth"' -- --set aiAnalysis.providers.bob.imagePullSecret=null
 exit $fail
