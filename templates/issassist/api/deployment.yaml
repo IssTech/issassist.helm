@@ -15,6 +15,8 @@ spec:
         checksum/logging: {{ include (print $.Template.BasePath "/issassist/logging-configmap.yaml") . | sha256sum }}
         # Restart on a change to aiAnalysis.* / global.darkSite: env is read once, at start.
         checksum/ai-analysis: {{ include (print $.Template.BasePath "/issassist/api/ai-analysis-configmap.yaml") . | sha256sum }}
+        # Restart on a change to api.avepoint.allowedHosts: env is read once, at start.
+        checksum/avepoint: {{ include (print $.Template.BasePath "/issassist/api/avepoint-configmap.yaml") . | sha256sum }}
       labels:
        app.kubernetes.io/name: api
     spec:
@@ -68,6 +70,9 @@ spec:
             # IA_DARK_SITE, IA_AI_*: what AI analysis may use (#463)
             - configMapRef:
                 name: issassist-ai-analysis
+            # IA_AVEPOINT_ALLOWED_HOSTS: where the AvePoint credential may go (#437)
+            - configMapRef:
+                name: issassist-avepoint
           env:
             # Every log line names the pod and node it came from: replicas run
             # on different nodes, and a network fault is often only one of them.

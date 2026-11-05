@@ -245,6 +245,22 @@ api:
     # UTC, 15 minutes after the 06:00 UTC collection (`avepoint.sync_time_utc`).
     schedule: "15 6 * * *"
 
+  # AvePoint (IssProtect for Cloud).
+  avepoint:
+    # Hosts IssAssist may send the AvePoint partner credential to: the client
+    # secret goes to the token URL, the access token it buys goes to the
+    # customers, services and jobs endpoints. https only, port 443 only, exact
+    # host names, no wildcards. A URL on any other host is refused when it is
+    # saved under Settings > Configuration > AvePoint, and a URL saved before
+    # this list existed is never called: collection for that account fails and
+    # says so. A new AvePoint region is added here.
+    #
+    # An empty list refuses every AvePoint URL (nothing is sent anywhere).
+    # Removing the key keeps these two defaults.
+    allowedHosts:
+      - identity.avepointonlineservices.com
+      - graph.avepointonlineservices.com
+
   valkey:
     storageClass: ~
     volumeSize: "1Gi"

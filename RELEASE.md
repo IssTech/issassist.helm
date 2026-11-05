@@ -12,6 +12,38 @@ in `docs/projects/<date>-<slug>.md`, linked from the entry.
 
 ## Next chart release — in development
 
+### AvePoint: the hosts the partner credential may be sent to
+
+**What it is.** A list of the AvePoint host names IssAssist is allowed to send the AvePoint
+partner credential to. The client secret goes to the token URL, and the access token it buys
+goes to the customers, services and jobs endpoints. Until now those four addresses could be
+changed freely under Settings → Configuration → AvePoint, and whatever was typed there
+received the secret.
+
+**Where it is.** `api.avepoint.allowedHosts` in `values.yaml` (new), rendered into the new
+ConfigMap `issassist-avepoint` as `IA_AVEPOINT_ALLOWED_HOSTS` and given to the API pod. A
+change to the list restarts the API pod.
+
+**What changed for them.**
+
+- **Default: `identity.avepointonlineservices.com` and `graph.avepointonlineservices.com`**,
+  the two hosts AvePoint uses today. An installation using AvePoint's standard addresses
+  needs to do nothing.
+- **An installation with a saved AvePoint URL on another host stops collecting until the
+  host is added to `api.avepoint.allowedHosts` or the URL changed — check Settings →
+  Configuration → AvePoint before upgrading.** The collection run then fails with a sentence
+  that says which address and what to do; nothing is sent to the other host.
+- Exact host names only: no scheme, port, path or wildcard. `helm install`/`upgrade` refuses
+  an entry that is not a bare lower-case host name. A new AvePoint region is added here.
+- **An empty list refuses every AvePoint address.** Removing the key, or upgrading with
+  `--reuse-values` from a release without it, keeps the two defaults.
+- Harmless on its own: an API image from before this change ignores the variable, and the
+  API's built-in default is the same two hosts.
+
+**Where the detail is.** issassist-api
+[`docs/projects/2026-11-05-ia-0008-avepoint.md`](https://github.com/IssTech/issassist-api/blob/review/docs/projects/2026-11-05-ia-0008-avepoint.md)
+(IA-0008, isstech-issues #437).
+
 ### IBM Bob: the run pods pull their images with a registry Secret
 
 **What it is.** IBM Bob's run pods, in `aiAnalysis.providers.bob.namespace`, now pull the
