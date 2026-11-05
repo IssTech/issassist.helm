@@ -1,0 +1,30 @@
+{{/*
+AvePoint (#437, IA-0008): the hosts the API may send the AvePoint partner
+credential to. values.yaml `api.avepoint.allowedHosts` -> this ConfigMap ->
+`envFrom` on the API -> IA_AVEPOINT_ALLOWED_HOSTS -> `AvePointConfig.allowed_hosts`.
+
+Read through `default dict`: `--reuse-values` rebases on the previous release's
+values, where `api.avepoint` did not exist yet, and such a release must still get
+the two default hosts. An explicit empty list renders "" and the API then refuses
+every AvePoint URL (fail closed); only a missing key falls back to the defaults.
+
+Each entry must be a bare host name: lower case letters, digits, dots and
+hyphens. No scheme, port, path or wildcard - the API compares exact names, so a
+`*.example.com` here would match nothing and only look like it did something.
+*/}}
+{{- if .Values.api.enabled }}
+{{- $ap := .Values.api.avepoint | default dict }}
+{{- $hosts := list "identity.avepointonlineservices.com" "graph.avepointonlineservices.com" }}
+{{- if hasKey $ap "allowedHosts" }}{{ $hosts = $ap.allowedHosts | default list }}{{ end }}
+{{- range $h := $hosts }}
+{{- if not (regexMatch "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$" (toString $h)) }}
+{{- fail "api.avepoint.allowedHosts: every entry must be a bare, lower-case host name such as graph.avepointonlineservices.com - no scheme, port, path or wildcard" }}
+{{- end }}
+{{- end }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: issassist-avepoint
+data:
+  IA_AVEPOINT_ALLOWED_HOSTS: {{ join "," $hosts | quote }}
+{{- end }}
