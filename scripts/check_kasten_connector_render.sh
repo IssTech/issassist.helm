@@ -20,5 +20,10 @@ expect "CRDs are list only"                           'resources: \["customresou
 expect_not "never secrets"                            'secrets' -- "${inv[@]}"
 expect_not "never configmaps"                         'configmaps' -- "${inv[@]}"
 expect_not "never a write verb"                       '"(create|update|patch|delete|deletecollection|escalate|bind|impersonate)"' -- "${inv[@]}"
+# List only (security review L2): turning the inventory on adds no `get` rule.
+gets_off=$(render | grep -c '"get"')
+gets_on=$(render "${inv[@]}" | grep -c '"get"')
+if [ "$gets_off" = "$gets_on" ]; then echo "ok   the inventory rules are list only"
+else echo "FAIL the inventory rules are list only ($gets_off vs $gets_on get rules)"; fail=1; fi
 expect_not "never exec into pods"                     'pods/exec|pods/log|pods/attach' -- "${inv[@]}"
 exit $fail

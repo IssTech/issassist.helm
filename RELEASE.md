@@ -22,11 +22,11 @@ namespace of a Kasten cluster, on which storage, and which Kanister Blueprint pr
 CustomResourceDefinitions (list), Kanister blueprints and Kasten blueprintbindings.
 
 **What changed for them.** New key, **default `false`**; only an explicit `true` grants it.
-Never Secrets or ConfigMaps, and no write verbs. **Re-apply the connector on every monitored
+`list` only: never `get`, never Secrets or ConfigMaps, and no write verbs. **Re-apply the connector on every monitored
 cluster** (`helm template … -s templates/kasten/connector.yaml | kubectl apply -f -`) after
 setting it; until then the Workloads view says the rights are missing. The pod read right
-technically includes container environment values: IssAssist drops env, command, args and
-annotations before storing anything.
+includes container environment values in the answer, which travel over TLS to IssAssist
+(accepted risk): IssAssist drops env, command, args and annotations before storing anything.
 
 **Where the detail is.** `docs/projects/2026-11-12-kasten-inventory.md`; mission
 IssTech/isstech-issues#512.

@@ -25,3 +25,13 @@ so env values taken from them (`valueFrom`) are never resolved.
 
 `scripts/check_kasten_connector_render.sh`: 12 cases. Watched failing: with the condition
 changed to "anything but false" (3 fail) and with `secrets` added to the pods rule (1 fails).
+
+## Security review, 2026/11/12
+
+- **L2:** the inventory rules are `list` only; `get` was dropped (the daily collection lists
+  each kind once). Render check: turning the inventory on adds no `get` rule (watched failing
+  with `get` put back on pods).
+- **Accepted risk, stated in values.yaml and the template:** the pod list carries literal
+  environment values over TLS to the IssAssist API. IssAssist's allow-list discards them
+  before storing anything, but they cross the wire. Kubernetes RBAC cannot grant pods
+  without their spec.
