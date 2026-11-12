@@ -12,6 +12,25 @@ in `docs/projects/<date>-<slug>.md`, linked from the entry.
 
 ## Next chart release — in development
 
+### IssProtect for DevOps: workload inventory read rights (IA-0031)
+
+**What it is.** Lets IssAssist see which databases and stateful services run in each
+namespace of a Kasten cluster, on which storage, and which Kanister Blueprint protects them.
+
+**Where it is.** `kastenConnector.inventory` in values.yaml. It adds read-only rules to the
+`issassist-kasten-connector` ClusterRole: pods, deployments, statefulsets, daemonsets,
+CustomResourceDefinitions (list), Kanister blueprints and Kasten blueprintbindings.
+
+**What changed for them.** New key, **default `false`**; only an explicit `true` grants it.
+`list` only: never `get`, never Secrets or ConfigMaps, and no write verbs. **Re-apply the connector on every monitored
+cluster** (`helm template … -s templates/kasten/connector.yaml | kubectl apply -f -`) after
+setting it; until then the Workloads view says the rights are missing. The pod read right
+includes container environment values in the answer, which travel over TLS to IssAssist
+(accepted risk): IssAssist drops env, command, args and annotations before storing anything.
+
+**Where the detail is.** `docs/projects/2026-11-12-kasten-inventory.md`; mission
+IssTech/isstech-issues#512.
+
 ### Training feed to IssTech: the site switch (IA-0031)
 
 **What it is.** Whether this installation may send pseudonymised closed cases (IBM Storage
