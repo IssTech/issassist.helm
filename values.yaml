@@ -191,6 +191,13 @@ aiAnalysis:
       egress: "internet-443"
     copilot:
       allowed: false
+  # Training feed for the IssAssist LLM (IA-0031, isstech-issues#512): each night,
+  # pseudonymised closed cases are uploaded to IssTech's training bucket.
+  # false: never possible here, and the switch under Settings → Reporting says so.
+  # true: an AI Admin (ai_analysis:configure) may switch it on; off until they do.
+  # Needs api.issTechConnect (the Dashboard enrolment) and reporting anonymisation.
+  training:
+    allowed: false
 
 # How the API and the TSM agent log. Applied to both, through the
 # issassist-logging ConfigMap; changing a value restarts their pods.

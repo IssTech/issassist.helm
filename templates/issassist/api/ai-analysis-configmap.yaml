@@ -28,6 +28,7 @@ values, where these keys did not exist yet.
 {{- $concurrent := 2 }}
 {{- if and (hasKey $ai "maxConcurrent") (not (kindIs "invalid" $ai.maxConcurrent)) }}{{ $concurrent = $ai.maxConcurrent }}{{ end }}
 {{- $wizard := $ai.debugWizard | default dict }}
+{{- $training := $ai.training | default dict }}
 {{- $local := $providers.local | default dict }}
 {{- $endpoint := $local.endpoint | default "" }}
 {{- /* The value is never printed: a URL with credentials in it must not end up in CI logs. */}}
@@ -49,6 +50,9 @@ data:
   IA_AI_MAX_DAILY_CAP_EUR: {{ $cap | toString | quote }}
   IA_AI_MAX_CONCURRENT: {{ $concurrent | toString | quote }}
   IA_AI_DEBUG_WIZARD: {{ ternary "true" "false" (eq (toString $wizard.enabled) "true") | quote }}
+  # Training feed to IssTech (IA-0031). Fails closed: only an explicit `true` renders
+  # "true"; missing (an upgrade from an older release), false, yes or a typo is "false".
+  IA_TRAINING_ALLOWED: {{ ternary "true" "false" (eq (toString $training.allowed) "true") | quote }}
   {{- $capDefaults := dict "claude" (list 5 20) "gemini" (list 5 20) "bob" (list 20 50) }}
   {{- range $id := list "local" "claude" "gemini" "bob" "copilot" }}
   {{- $p := get $providers $id | default dict }}

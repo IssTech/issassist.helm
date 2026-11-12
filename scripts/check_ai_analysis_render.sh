@@ -184,4 +184,9 @@ expect "an existingSecret named bob-run-* fails too"  'must not start with bob-r
 expect "an existingSecret that is not a name fails"   'imagePullSecret must be a Secret name' -- "${bob[@]}" --set imageCredentials.existingSecret=Bad_Name
 expect "Bob's key Secret as pull Secret fails"        "must not start with bob-run- or be Bob's key" -- "${bob[@]}" --set aiAnalysis.providers.bob.existingSecret=my-bob --set aiAnalysis.providers.bob.imagePullSecret=my-bob
 expect "a release from before the key renders"        'IA_AI_BOB_PULL_SECRET: "isstech-repository-auth"' -- --set aiAnalysis.providers.bob.imagePullSecret=null
+# The training feed to IssTech (IA-0031): new egress, so it fails closed.
+expect "the training feed is not allowed by default"   'IA_TRAINING_ALLOWED: "false"' --
+expect "training.allowed true allows it"               'IA_TRAINING_ALLOWED: "true"' -- --set aiAnalysis.training.allowed=true
+expect "training.allowed yes does not"                 'IA_TRAINING_ALLOWED: "false"' -- --set aiAnalysis.training.allowed=yes
+expect "training gone (older release) does not"        'IA_TRAINING_ALLOWED: "false"' -- --set aiAnalysis.training=null
 exit $fail

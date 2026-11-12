@@ -12,6 +12,24 @@ in `docs/projects/<date>-<slug>.md`, linked from the entry.
 
 ## Next chart release — in development
 
+### Training feed to IssTech: the site switch (IA-0031)
+
+**What it is.** Whether this installation may send pseudonymised closed cases (IBM Storage
+Protect now, IssProtect for DevOps later) to IssTech each night, to train the IssAssist LLM.
+
+**Where it is.** `aiAnalysis.training.allowed` in values.yaml, rendered as
+`IA_TRAINING_ALLOWED` in the `issassist-ai-analysis` ConfigMap.
+
+**What changed for them.** New key, **default `false`**. Only an explicit `true` allows it;
+a missing key (an upgrade with `--reuse-values` from an older release), `yes` or a typo
+keeps it off. With `true`, an AI Admin (`ai_analysis:configure`) can switch the feed on
+under Settings → Configuration → Reporting; it stays off until they do. **Sending also
+needs the IssTech Dashboard enrolment (`api.issTechConnect`) and IssTech must have enabled
+training for the installation.** A changed value restarts the API pod.
+
+**Where the detail is.** `docs/projects/2026-11-12-training-feed.md`; mission
+IssTech/isstech-issues#512.
+
 ### AvePoint: the hosts the partner credential may be sent to
 
 **What it is.** A list of the AvePoint host names IssAssist is allowed to send the AvePoint
