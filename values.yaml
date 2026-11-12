@@ -455,6 +455,11 @@ clusterScoped:
 kastenConnector:
   enabled: false
   serviceAccountName: issassist-kasten-connector
+  # Workload inventory (IA-0031): read pods, deployments, statefulsets, daemonsets,
+  # CRDs and Kanister blueprints/bindings so IssAssist can show which databases run
+  # where and what protects them. Read-only; never Secrets or ConfigMaps. Only an
+  # explicit true grants it. Re-apply the connector on every monitored cluster.
+  inventory: false
 
 imageCredentials:
   registry: "ghcr.io"
