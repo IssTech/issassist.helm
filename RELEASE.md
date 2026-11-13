@@ -24,13 +24,13 @@ on the API pod. A comma-separated list of IP addresses or CIDRs.
 **What changed for them.** The chart used to hard-code `"*"`, which the API ignored because of
 a bug in its start script; with that bug fixed (issassist-api, IA-0036), `"*"` would have let
 any client write its own address. The key now defaults to **empty: no proxy is trusted**, which
-is how installations have effectively run so far. `"*"`, a `*` inside a list, or a host name
-stops the render with a message. **To see real client addresses, set it to the ingress
+is how installations have effectively run so far. `"*"`, a `*` inside a list, a `/0` (`0.0.0.0/0`, `::/0`, which trust every address), an empty
+entry or anything that is not an IP address or CIDR stops the render with a message. **To see real client addresses, set it to the ingress
 controller's pod CIDR or addresses, never `"*"`. Setting it also makes the API trust
 `X-Forwarded-Proto`, so re-test SSO/SAML sign-in after setting it.**
 
 **Where the detail is.** IssTech/isstech-issues#517 (IA-0036, security review H1);
-`scripts/check_api_render.sh` (8 checks).
+`scripts/check_api_render.sh` (16 checks).
 
 ### IssProtect for DevOps: workload inventory read rights (IA-0031)
 

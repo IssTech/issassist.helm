@@ -94,8 +94,16 @@ spec:
             {{- if or (eq $fwd "*") (contains "*" $fwd) }}
             {{- fail "api.forwardedAllowIps must list the ingress controller's addresses or CIDRs, never \"*\"" }}
             {{- end }}
-            {{- if and $fwd (not (regexMatch "^[0-9A-Fa-f.:/,]+$" (replace " " "" $fwd))) }}
-            {{- fail "api.forwardedAllowIps must be a comma-separated list of IP addresses or CIDRs" }}
+            {{- /* Each entry an IPv4 or IPv6 address or CIDR; never an empty entry and never a
+                 /0, which trusts every address like "*" (re-review 1). */}}
+            {{- $v4 := "^(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])(\\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])){3}(/([1-9]|[12][0-9]|3[0-2]))?$" }}
+            {{- $v6 := "^([0-9A-Fa-f]{1,4}:){1,7}(:|:?[0-9A-Fa-f]{1,4}(:[0-9A-Fa-f]{1,4}){0,6}|:)?(/([1-9]|[1-9][0-9]|1[01][0-9]|12[0-8]))?$" }}
+            {{- if $fwd }}
+            {{- range $entry := splitList "," (replace " " "" $fwd) }}
+            {{- if not (or (regexMatch $v4 $entry) (and (contains ":" $entry) (regexMatch $v6 $entry))) }}
+            {{- fail "api.forwardedAllowIps must be a comma-separated list of IP addresses or CIDRs (no /0)" }}
+            {{- end }}
+            {{- end }}
             {{- end }}
             - name: IA_FORWARDED_ALLOW_IPS
               value: {{ replace " " "" $fwd | quote }}
