@@ -12,6 +12,26 @@ in `docs/projects/<date>-<slug>.md`, linked from the entry.
 
 ## Next chart release — in development
 
+### Trusted proxies for client addresses: `api.forwardedAllowIps` (IA-0036)
+
+**What it is.** The list of proxies whose `X-Forwarded-For` and `X-Forwarded-Proto` headers
+the API believes, so that logs, the audit trail and new-login notices show the real client
+address instead of the ingress controller's.
+
+**Where it is.** `api.forwardedAllowIps` in values.yaml, rendered as `IA_FORWARDED_ALLOW_IPS`
+on the API pod. A comma-separated list of IP addresses or CIDRs.
+
+**What changed for them.** The chart used to hard-code `"*"`, which the API ignored because of
+a bug in its start script; with that bug fixed (issassist-api, IA-0036), `"*"` would have let
+any client write its own address. The key now defaults to **empty: no proxy is trusted**, which
+is how installations have effectively run so far. `"*"`, a `*` inside a list, a `/0` (`0.0.0.0/0`, `::/0`, which trust every address), an empty
+entry or anything that is not an IP address or CIDR stops the render with a message. **To see real client addresses, set it to the ingress
+controller's pod CIDR or addresses, never `"*"`. Setting it also makes the API trust
+`X-Forwarded-Proto`, so re-test SSO/SAML sign-in after setting it.**
+
+**Where the detail is.** IssTech/isstech-issues#517 (IA-0036, security review H1);
+`scripts/check_api_render.sh` (16 checks).
+
 ### IssProtect for DevOps: workload inventory read rights (IA-0031)
 
 **What it is.** Lets IssAssist see which databases and stateful services run in each

@@ -86,8 +86,27 @@ spec:
                   fieldPath: spec.nodeName
             - name: IA_ROOT_PATH
               value: "{{ .Values.global.basePath }}/api"
+            # The proxies whose X-Forwarded-* headers are trusted (IA-0036, security
+            # review H1). Empty (the default) trusts none: the API sees the proxy's own
+            # address, as it always effectively did. Never "*": that trusts a header the
+            # client writes. A non-list value or "*" stops the render.
+            {{- $fwd := (.Values.api | default dict).forwardedAllowIps | default "" | toString | trim }}
+            {{- if or (eq $fwd "*") (contains "*" $fwd) }}
+            {{- fail "api.forwardedAllowIps must list the ingress controller's addresses or CIDRs, never \"*\"" }}
+            {{- end }}
+            {{- /* Each entry an IPv4 or IPv6 address or CIDR; never an empty entry and never a
+                 /0, which trusts every address like "*" (re-review 1). */}}
+            {{- $v4 := "^(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])(\\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])){3}(/([1-9]|[12][0-9]|3[0-2]))?$" }}
+            {{- $v6 := "^([0-9A-Fa-f]{1,4}:){1,7}(:|:?[0-9A-Fa-f]{1,4}(:[0-9A-Fa-f]{1,4}){0,6}|:)?(/([1-9]|[1-9][0-9]|1[01][0-9]|12[0-8]))?$" }}
+            {{- if $fwd }}
+            {{- range $entry := splitList "," (replace " " "" $fwd) }}
+            {{- if not (or (regexMatch $v4 $entry) (and (contains ":" $entry) (regexMatch $v6 $entry))) }}
+            {{- fail "api.forwardedAllowIps must be a comma-separated list of IP addresses or CIDRs (no /0)" }}
+            {{- end }}
+            {{- end }}
+            {{- end }}
             - name: IA_FORWARDED_ALLOW_IPS
-              value: "*"
+              value: {{ replace " " "" $fwd | quote }}
             # Whether logs may be sent to IssTech support at all. The administrator's
             # switch under Reporting decides whether they are; this only removes the
             # possibility.
