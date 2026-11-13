@@ -224,6 +224,12 @@ support:
 api:
   enabled: true
   image: 'ghcr.io/isstech/issassist-api:1.3'
+  # The proxies whose X-Forwarded-For / -Proto headers the API trusts, as a
+  # comma-separated list of IP addresses or CIDRs: the ingress controller's pod CIDR or
+  # addresses. Empty (default) trusts none, so logs and the audit trail show the
+  # proxy's address. Never "*": that trusts a header any client can write (refused).
+  # Setting it also trusts X-Forwarded-Proto, so re-test SSO/SAML sign-in afterwards.
+  forwardedAllowIps: ""
 
   service:
     # Can be "ClusterIP", "NodePort" or "LoadBalancer".
