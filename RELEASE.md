@@ -12,6 +12,28 @@ in `docs/projects/<date>-<slug>.md`, linked from the entry.
 
 ## Next chart release — in development
 
+### Postgres and Valkey are reachable only inside the cluster: `*.postgres.service` / `*.valkey.service` (IA-0044)
+
+**What it is.** The six database Services (`api-postgres`, `api-valkey`, `tsm-agent-postgres`,
+`tsm-agent-valkey`, `superset-postgres`, `superset-valkey`) were fixed `NodePort`s on 30101–30106,
+so the databases answered on every node's address to anything that could route to the node
+network.
+
+**Where it is.** `api.postgres.service`, `api.valkey.service`, `tsmAgent.postgres.service`,
+`tsmAgent.valkey.service`, `superset.postgres.service`, `superset.valkey.service` in values.yaml,
+each with `type` and an optional `nodePort`.
+
+**What changed for them.** **The default changed: all six are now `ClusterIP`. The node ports
+30101–30106 stop answering on upgrade.** IssAssist itself, pgAdmin and Superset connect by
+Service name inside the cluster and are not affected. **Anything that connected from outside the
+cluster through a node port — a database client on a laptop, an external backup of the database
+— must either use `kubectl port-forward`, or set that Service back, e.g.
+`--set api.postgres.service.type=NodePort`, which restores the old port (30101); `nodePort`
+chooses another.** Only `ClusterIP` and `NodePort` are accepted. Two releases of the chart can
+now run on one cluster, since the fixed ports no longer collide.
+
+**Where the detail is.** [`docs/projects/2026-11-14-1-5-0-more-fixes.md`](docs/projects/2026-11-14-1-5-0-more-fixes.md).
+
 ### Trusted proxies for client addresses: `api.forwardedAllowIps` (IA-0036)
 
 **What it is.** The list of proxies whose `X-Forwarded-For` and `X-Forwarded-Proto` headers

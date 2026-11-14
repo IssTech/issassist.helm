@@ -7,11 +7,18 @@ metadata:
     app.kubernetes.io/name: postgres
     app.kubernetes.io/part-of: superset
 spec:
-  type: NodePort
+{{- $svc := (((.Values.superset | default dict).postgres | default dict).service | default dict) }}
+{{- $type := $svc.type | default "ClusterIP" }}
+{{- if not (has $type (list "ClusterIP" "NodePort")) }}
+{{- fail "superset.postgres.service.type must be ClusterIP or NodePort" }}
+{{- end }}
+  type: {{ $type }}
   ports:
     - protocol: TCP
       port: 5432
-      nodePort: 30105
+      {{- if eq $type "NodePort" }}
+      nodePort: {{ $svc.nodePort | default 30105 }}
+      {{- end }}
   selector:
     app.kubernetes.io/name: postgres
     app.kubernetes.io/part-of: superset

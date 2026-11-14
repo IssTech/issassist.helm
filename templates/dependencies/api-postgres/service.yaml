@@ -6,11 +6,18 @@ metadata:
     app.kubernetes.io/name: postgres
     app.kubernetes.io/part-of: api
 spec:
-  type: NodePort
+{{- $svc := (((.Values.api | default dict).postgres | default dict).service | default dict) }}
+{{- $type := $svc.type | default "ClusterIP" }}
+{{- if not (has $type (list "ClusterIP" "NodePort")) }}
+{{- fail "api.postgres.service.type must be ClusterIP or NodePort" }}
+{{- end }}
+  type: {{ $type }}
   ports:
     - protocol: TCP
       port: 5432
-      nodePort: 30101
+      {{- if eq $type "NodePort" }}
+      nodePort: {{ $svc.nodePort | default 30101 }}
+      {{- end }}
   selector:
     app.kubernetes.io/name: postgres
     app.kubernetes.io/part-of: api

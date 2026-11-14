@@ -6,11 +6,18 @@ metadata:
     app.kubernetes.io/name: valkey
     app.kubernetes.io/part-of: api
 spec:
-  type: NodePort
+{{- $svc := (((.Values.api | default dict).valkey | default dict).service | default dict) }}
+{{- $type := $svc.type | default "ClusterIP" }}
+{{- if not (has $type (list "ClusterIP" "NodePort")) }}
+{{- fail "api.valkey.service.type must be ClusterIP or NodePort" }}
+{{- end }}
+  type: {{ $type }}
   ports:
     - protocol: TCP
       port: 6379
-      nodePort: 30102
+      {{- if eq $type "NodePort" }}
+      nodePort: {{ $svc.nodePort | default 30102 }}
+      {{- end }}
   selector:
     app.kubernetes.io/name: valkey
     app.kubernetes.io/part-of: api
