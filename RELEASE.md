@@ -34,26 +34,6 @@ now run on one cluster, since the fixed ports no longer collide.
 
 **Where the detail is.** [`docs/projects/2026-11-14-1-5-0-more-fixes.md`](docs/projects/2026-11-14-1-5-0-more-fixes.md).
 
-### `api.selfCheck.caBundle`: the CA the public-URL check trusts (#372)
-
-**What it is.** When an operator saves the public API URL, the API calls itself at that URL.
-That call now always verifies the certificate (issassist-api 1.5.0); this key gives it the CA
-to verify against when the certificate is not from a public CA.
-
-**Where it is.** `api.selfCheck.caBundle.secret` or `.configMap` (one, not both) and `.key`
-(default `ca.crt`), rendered as `IA_SELF_CHECK_CA_BUNDLE` and a read-only volume on the API pod
-at `/mnt/self-check-ca/`.
-
-**What changed for them.** Nothing to do for a public certificate (`issuerType: cluster` or
-`issuer`), or for the chart's own self-signed ingress certificate (`issuerType: disabled`, the
-default): the chart then trusts `self-signed-ingress-cert` by itself, mounting only its
-`ca.crt`, never the private key. **If something in front of the ingress presents a certificate
-from your company CA, create a Secret or ConfigMap holding that CA and name it here, or saving
-the public API URL fails with "could not be verified".** A missing Secret or ConfigMap does not
-stop the API from starting.
-
-**Where the detail is.** [`docs/projects/2026-11-14-1-5-0-more-fixes.md`](docs/projects/2026-11-14-1-5-0-more-fixes.md).
-
 ### Trusted proxies for client addresses: `api.forwardedAllowIps` (IA-0036)
 
 **What it is.** The list of proxies whose `X-Forwarded-For` and `X-Forwarded-Proto` headers

@@ -231,23 +231,6 @@ api:
   # Setting it also trusts X-Forwarded-Proto, so re-test SSO/SAML sign-in afterwards.
   forwardedAllowIps: ""
 
-  # The check that runs when an operator saves the public API URL (Settings >
-  # Configuration): the API calls itself at that URL to prove it points here. The
-  # certificate is always verified (#372); there is no switch to turn that off.
-  # Trusted: the image's public CA store, plus the CA named here.
-  selfCheck:
-    caBundle:
-      # A Secret or a ConfigMap you created, holding the CA (PEM) that signs the
-      # certificate at the public URL -- e.g. your company CA, or the CA of a load
-      # balancer in front of the ingress. Set one of the two, not both.
-      secret: ""
-      configMap: ""
-      key: "ca.crt"
-      # With neither set and global.ingress.tls.issuerType "disabled", the chart
-      # trusts its own self-signed ingress certificate (`self-signed-ingress-cert`),
-      # which is what that ingress presents. With a public issuer nothing extra is
-      # needed.
-
   service:
     # Can be "ClusterIP", "NodePort" or "LoadBalancer".
     type: ClusterIP
