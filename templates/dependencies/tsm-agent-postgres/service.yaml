@@ -6,11 +6,18 @@ metadata:
     app.kubernetes.io/name: postgres
     app.kubernetes.io/part-of: tsm-agent
 spec:
-  type: NodePort
+{{- $svc := (((.Values.tsmAgent | default dict).postgres | default dict).service | default dict) }}
+{{- $type := $svc.type | default "ClusterIP" }}
+{{- if not (has $type (list "ClusterIP" "NodePort")) }}
+{{- fail "tsmAgent.postgres.service.type must be ClusterIP or NodePort" }}
+{{- end }}
+  type: {{ $type }}
   ports:
     - protocol: TCP
       port: 5432
-      nodePort: 30103
+      {{- if eq $type "NodePort" }}
+      nodePort: {{ $svc.nodePort | default 30103 }}
+      {{- end }}
   selector:
     app.kubernetes.io/name: postgres
     app.kubernetes.io/part-of: tsm-agent

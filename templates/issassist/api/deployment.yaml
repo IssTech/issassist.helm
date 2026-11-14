@@ -1,4 +1,19 @@
 {{ if .Values.api.enabled }}
+{{- /* The CA the public-URL self-check trusts (#372): the operator's Secret or
+     ConfigMap, else the chart's own self-signed ingress certificate when that is
+     what the ingress presents. */}}
+{{- $caB := (((.Values.api | default dict).selfCheck | default dict).caBundle | default dict) }}
+{{- if and $caB.secret $caB.configMap }}
+{{- fail "api.selfCheck.caBundle: set secret or configMap, not both" }}
+{{- end }}
+{{- $selfCheckCa := dict "kind" "" "name" "" "key" ($caB.key | default "ca.crt") }}
+{{- if $caB.secret }}
+{{- $_ := set $selfCheckCa "kind" "secret" }}{{- $_ := set $selfCheckCa "name" $caB.secret }}
+{{- else if $caB.configMap }}
+{{- $_ := set $selfCheckCa "kind" "configMap" }}{{- $_ := set $selfCheckCa "name" $caB.configMap }}
+{{- else if eq .Values.global.ingress.tls.issuerType "disabled" }}
+{{- $_ := set $selfCheckCa "kind" "secret" }}{{- $_ := set $selfCheckCa "name" "self-signed-ingress-cert" }}{{- $_ := set $selfCheckCa "key" "ca.crt" }}
+{{- end }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -155,6 +170,11 @@ spec:
               value: {{ .Values.api.issTechConnect.caCertPath | quote }}
 {{- end }}
 {{- end }}
+{{- if $selfCheckCa.name }}
+            # The CA the public-URL self-check trusts besides the public store (#372).
+            - name: IA_SELF_CHECK_CA_BUNDLE
+              value: "/mnt/self-check-ca/ca.crt"
+{{- end }}
             - name: IA_DATABASE_USERNAME
               valueFrom:
                 secretKeyRef:
@@ -274,6 +294,12 @@ spec:
             - name: issassist-ca-cert
               mountPath: "/mnt/issassist-ca.crt"
               subPath: "tls.crt"
+{{- if $selfCheckCa.name }}
+            # A directory, not a subPath, so a renewed certificate reaches the pod.
+            - name: self-check-ca
+              mountPath: "/mnt/self-check-ca"
+              readOnly: true
+{{- end }}
       volumes:
         - name: api-config
           configMap:
@@ -284,6 +310,24 @@ spec:
         - name: issassist-ca-cert
           secret:
             secretName: issassist-ca-cert
+{{- if $selfCheckCa.name }}
+        - name: self-check-ca
+          {{- if eq $selfCheckCa.kind "secret" }}
+          secret:
+            secretName: {{ $selfCheckCa.name | quote }}
+          {{- else }}
+          configMap:
+            name: {{ $selfCheckCa.name | quote }}
+          {{- end }}
+            # Only the CA: never the private key that sits beside it in the
+            # ingress certificate's Secret.
+            items:
+              - key: {{ $selfCheckCa.key | quote }}
+                path: "ca.crt"
+            # A missing CA does not stop the API starting; saving the public URL
+            # then says the bundle cannot be read.
+            optional: true
+{{- end }}
         - name: api-postgres-auth
           secret:
             secretName: api-postgres-auth

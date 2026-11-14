@@ -7,11 +7,18 @@ metadata:
     app.kubernetes.io/name: valkey
     app.kubernetes.io/part-of: superset
 spec:
-  type: NodePort
+{{- $svc := (((.Values.superset | default dict).valkey | default dict).service | default dict) }}
+{{- $type := $svc.type | default "ClusterIP" }}
+{{- if not (has $type (list "ClusterIP" "NodePort")) }}
+{{- fail "superset.valkey.service.type must be ClusterIP or NodePort" }}
+{{- end }}
+  type: {{ $type }}
   ports:
     - protocol: TCP
       port: 6379
-      nodePort: 30106
+      {{- if eq $type "NodePort" }}
+      nodePort: {{ $svc.nodePort | default 30106 }}
+      {{- end }}
   selector:
     app.kubernetes.io/name: valkey
     app.kubernetes.io/part-of: superset
