@@ -358,6 +358,12 @@ tsmAgent:
     # Define this if type="NodePort":
     # nodePort: 30002
 
+  tasks:
+    # Seconds the agent waits for an unresponsive worker before aborting it.
+    # A process row whose worker is gone is closed as "unknown" after twice
+    # this (600 s by default), so it stops blocking the nightly data retention.
+    heartbeatTimeout: 300
+
   # The tape sync (Storage Protect → Tapes). Every query goes through the one
   # Operations Center, so this caps how many servers it is asked about at once.
   tapeSync:

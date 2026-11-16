@@ -12,6 +12,21 @@ in `docs/projects/<date>-<slug>.md`, linked from the entry.
 
 ## Next chart release — in development
 
+### How long the TSM agent waits for an unresponsive worker: `tsmAgent.tasks.heartbeatTimeout` (IA-0010, #344)
+
+**What it is.** The number of seconds the TSM agent waits for a silent worker before giving up
+on it. It was fixed at 300 in the chart's agent configuration. With TSM agent 1.5.0 it also
+decides when a process row whose worker died is closed: after **twice** this value (600 s by
+default), so a dead *Dedup statistics sync* no longer blocks the nightly data retention.
+
+**Where it is.** `tsmAgent.tasks.heartbeatTimeout` in values.yaml → the `tsm-agent-config`
+ConfigMap (`[tasks] heartbeat_timeout` in the agent's `config.toml`).
+
+**What changed for them.** Nothing by default: 300 s, as before. A value of 0 or below is
+refused at install/upgrade. An upgrade with `--reuse-values` from older values renders the
+default. Check: `bash scripts/check_tsm_agent_tasks_render.sh`. Detail:
+[`docs/projects/2026-11-16-1-5-0-small-fixes.md`](docs/projects/2026-11-16-1-5-0-small-fixes.md).
+
 ### Postgres and Valkey are reachable only inside the cluster: `*.postgres.service` / `*.valkey.service` (IA-0044)
 
 **What it is.** The six database Services (`api-postgres`, `api-valkey`, `tsm-agent-postgres`,
