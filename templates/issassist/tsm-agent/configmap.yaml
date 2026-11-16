@@ -224,7 +224,20 @@ data:
     # aborting it.
     # Default:
     # heartbeat_timeout = 300.0
-    heartbeat_timeout = 300.0
+    {{- /* values.yaml tsmAgent.tasks.heartbeatTimeout. `default dict`: an upgrade
+           with --reuse-values keeps old values, which have no tasks key. The agent
+           also closes a dead worker's process row after 2 x this (#344). */}}
+    {{- $tasks := .Values.tsmAgent.tasks | default dict }}
+    {{- $heartbeat := 300.0 }}
+    {{- if and (hasKey $tasks "heartbeatTimeout") (ne (toString $tasks.heartbeatTimeout) "<nil>") }}
+    {{- $heartbeat = $tasks.heartbeatTimeout | float64 }}
+    {{- end }}
+    {{- /* 30..86400 s, as the agent itself enforces. Written as "not (in range)"
+           so NaN, which fails every comparison, is refused too; Inf is above it. */}}
+    {{- if not (and (ge $heartbeat 30.0) (le $heartbeat 86400.0)) }}
+    {{- fail "tsmAgent.tasks.heartbeatTimeout must be from 30 to 86400 seconds" }}
+    {{- end }}
+    heartbeat_timeout = {{ printf "%.1f" $heartbeat }}
 
     # The interval between each heartbeat (in seconds). This defines how ofter tasks
     # should announce that they are active, and how often the task manager should
