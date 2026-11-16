@@ -22,8 +22,9 @@ default), so a dead *Dedup statistics sync* no longer blocks the nightly data re
 **Where it is.** `tsmAgent.tasks.heartbeatTimeout` in values.yaml → the `tsm-agent-config`
 ConfigMap (`[tasks] heartbeat_timeout` in the agent's `config.toml`).
 
-**What changed for them.** Nothing by default: 300 s, as before. A value of 0 or below is
-refused at install/upgrade. An upgrade with `--reuse-values` from older values renders the
+**What changed for them.** Nothing by default: 300 s, as before. **The value must be from 30 to
+86400 seconds; anything else (including NaN and infinity) is refused at install/upgrade**, and
+TSM agent 1.5.0 refuses the same range at start-up. An upgrade with `--reuse-values` from older values renders the
 default. Check: `bash scripts/check_tsm_agent_tasks_render.sh`. Detail:
 [`docs/projects/2026-11-16-1-5-0-small-fixes.md`](docs/projects/2026-11-16-1-5-0-small-fixes.md).
 

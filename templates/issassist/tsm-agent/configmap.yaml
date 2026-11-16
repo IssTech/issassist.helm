@@ -232,8 +232,10 @@ data:
     {{- if and (hasKey $tasks "heartbeatTimeout") (ne (toString $tasks.heartbeatTimeout) "<nil>") }}
     {{- $heartbeat = $tasks.heartbeatTimeout | float64 }}
     {{- end }}
-    {{- if le $heartbeat 0.0 }}
-    {{- fail "tsmAgent.tasks.heartbeatTimeout must be a number of seconds above 0" }}
+    {{- /* 30..86400 s, as the agent itself enforces. Written as "not (in range)"
+           so NaN, which fails every comparison, is refused too; Inf is above it. */}}
+    {{- if not (and (ge $heartbeat 30.0) (le $heartbeat 86400.0)) }}
+    {{- fail "tsmAgent.tasks.heartbeatTimeout must be from 30 to 86400 seconds" }}
     {{- end }}
     heartbeat_timeout = {{ printf "%.1f" $heartbeat }}
 

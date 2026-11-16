@@ -19,8 +19,10 @@ check "a fractional value is kept"               "90.5"  -- --set tsmAgent.tasks
 check "old values without tasks still render"    "300.0" -- --set tsmAgent.tasks=null
 if [ "$(render | grep -cE '^    heartbeat_timeout = ')" = "1" ]; then
   echo "ok   exactly one heartbeat_timeout line"; else echo "FAIL exactly one heartbeat_timeout line"; fail=1; fi
-for bad in 0 -5; do
-  if render --set tsmAgent.tasks.heartbeatTimeout=$bad | grep -q 'must be a number of seconds above 0'; then
+check "the lower bound 30 is accepted"           "30.0"    -- --set tsmAgent.tasks.heartbeatTimeout=30
+check "the upper bound 86400 is accepted"        "86400.0" -- --set tsmAgent.tasks.heartbeatTimeout=86400
+for bad in 0 -5 0.1 29.9 86401 1e11 NaN nan Inf inf -Inf; do
+  if render --set tsmAgent.tasks.heartbeatTimeout=$bad | grep -q 'must be from 30 to 86400 seconds'; then
     echo "ok   $bad is refused"; else echo "FAIL $bad is refused"; fail=1; fi
 done
 exit $fail
