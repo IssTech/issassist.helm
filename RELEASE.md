@@ -10,7 +10,26 @@ in `docs/projects/<date>-<slug>.md`, linked from the entry.
 
 ---
 
-## Next chart release — in development
+## 1.5.0 — in development
+
+### The chart is now version 1.5.0 and installs IssAssist 1.5.0 images
+
+**What it is.** The chart's own version and the application images it installs by default.
+Until now `review` still carried chart `1.2.0`, `appVersion` `"1.3"` and `:1.3` images, so a
+default install from this chart would have deployed IssAssist 1.3.
+
+**Where it is.** `Chart.yaml` (`version: 1.5.0`, `appVersion: "1.5.0"`) and `values.yaml`:
+`api.image`, `webGUI.image` and `tsmAgent.image` → `ghcr.io/isstech/issassist-<component>:1.5.0`.
+
+**What changed for them.** A default install or `helm upgrade` without image overrides now runs
+1.5.0. The images are pinned to the exact release (`1.5.0`), not the floating `1.5` tag, so a
+later 1.5.x image is only picked up by a chart that names it. **The `1.5.0` image tags exist
+only once the GitHub releases `v1.5.0` are published in issassist-api, issassist-webgui and
+issassist-tsm-agent** (their `docker-release.yml` builds on a published release). Until then,
+deploy with explicit `--set …image=…:sha-<commit>`, as staging does. An install that sets its
+own image values (`--reuse-values` from an older release keeps the old ones) is unaffected:
+**check `helm get values` for pinned `:1.3`/`:1.4` images before upgrading.**
+
 
 ### How long the TSM agent waits for an unresponsive worker: `tsmAgent.tasks.heartbeatTimeout` (IA-0010, #344)
 
