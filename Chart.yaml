@@ -31,7 +31,7 @@ dependencies:
   # key Secret in templates/accounts/ and templates/issassist/ depends on it.
   # Listing it is what `helm lint` asks for (#366, IA-0046).
   - name: kubernetes-secret-generator
-    version: 3.4.2  # IA-0046 deliberate break: helm dependency build must go red
+    version: 3.4.1
   - name: superset
     version: 0.15.2
     condition: superset.enabled
