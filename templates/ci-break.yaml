@@ -1,0 +1,4 @@
+# IA-0046 deliberate break: helm lint must go red (reverted next)
+kind: ConfigMap
+metadata:
+  name: {{ .Values.ciBreak.missing.name }}
