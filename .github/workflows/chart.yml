@@ -33,8 +33,10 @@ env:
   # 1.36 is the newest release with published schemas, and what the Bob admission
   # policy was tested live against.
   KUBE_VERSIONS: "1.30.0 1.36.0"
-  # cert-manager Certificate/Issuer/ClusterIssuer schemas. Pinned to a commit so a
-  # catalog change cannot turn this check red or green by itself.
+  # Schemas are pinned to a commit so an upstream change cannot turn this check red or
+  # green by itself: the Kubernetes API schemas (kubeconform's default location, pinned)
+  # and the cert-manager Certificate/Issuer/ClusterIssuer schemas.
+  K8S_SCHEMAS: https://raw.githubusercontent.com/yannh/kubernetes-json-schema/e0c72a1bc5f409d1685c0e1323460c8a98cd7459/{{.NormalizedKubernetesVersion}}-standalone{{.StrictSuffix}}/{{.ResourceKind}}{{.KindSuffix}}.json
   CRD_SCHEMAS: https://raw.githubusercontent.com/datreeio/CRDs-catalog/3eb90d47aba8d61919d4419dd38301536e32a94b/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json
 
 jobs:
@@ -153,7 +155,7 @@ jobs:
               echo "--- Kubernetes $v, $(basename "$r")"
               # No -ignore-missing-schemas: an object kind without a schema fails.
               if log=$(kubeconform -strict -summary -output text -kubernetes-version "$v" \
-                  -schema-location default -schema-location "$CRD_SCHEMAS" "$r" 2>&1); then rc=0; else rc=$?; fi
+                  -schema-location "$K8S_SCHEMAS" -schema-location "$CRD_SCHEMAS" "$r" 2>&1); then rc=0; else rc=$?; fi
               echo "$log"
               echo "| $v | $(basename "$r" .yaml) | $(tail -1 <<<"$log") |" >> "$GITHUB_STEP_SUMMARY"
               [ "$rc" -eq 0 ] || failed=1
