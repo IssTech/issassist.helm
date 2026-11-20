@@ -129,7 +129,9 @@ jobs:
           echo "|---|---:|---:|" >> "$GITHUB_STEP_SUMMARY"
           for s in "${scripts[@]}"; do
             echo "::group::$s"
-            log=$(bash "$s" 2>&1); rc=$?
+            # Actions runs steps with bash -e: catch the exit code instead of dying on it,
+            # so a failing script still prints its FAIL lines and the summary row.
+            if log=$(bash "$s" 2>&1); then rc=0; else rc=$?; fi
             echo "$log"
             echo "::endgroup::"
             ok=$(grep -c '^ok' <<<"$log" || true); bad=$(grep -c '^FAIL' <<<"$log" || true)
