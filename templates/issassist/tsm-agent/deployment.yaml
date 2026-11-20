@@ -5,7 +5,6 @@ metadata:
   name: tsm-agent
 spec:
   replicas: {{ .Values.tsmAgent.replicas }}
-  replicaz: 1  # IA-0046 deliberate break: kubeconform must go red
   selector:
     matchLabels:
       app.kubernetes.io/name: tsm-agent
