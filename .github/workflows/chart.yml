@@ -1,0 +1,166 @@
+# Chart checks (IA-0046, #366): every step that used to be run by hand, run on every
+# pull request into review or master and on every push to review.
+#
+#   1. helm dependency build  - Chart.lock matches Chart.yaml and the vendored subcharts
+#                               under charts/ are the ones it names (nothing downloaded)
+#   2. helm lint --strict     - with the defaults and with each render set in ci/
+#   3. helm template          - the same three sets, kept as files for step 5
+#   4. scripts/check_*_render.sh and check_readonly_role.sh (render part only)
+#   5. kubeconform --strict   - every rendered object against the Kubernetes API
+#                               schemas of the oldest and newest version we support
+#
+# Tools are downloaded at pinned versions and their SHA-256 checked; no third-party
+# action runs here. Bump a version by changing the version AND its checksum together.
+name: Chart
+
+on:
+  pull_request:
+    branches: [review, master]
+  push:
+    branches: [review]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chart-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  KUBECONFORM_VERSION: v0.8.0
+  KUBECONFORM_SHA256: 9bc2bffbf71f261128533edaf912153948b7ff238f9a531ae6d34466ec287883
+  # RELEASE.md: the chart needs Kubernetes 1.30 or later (ValidatingAdmissionPolicy).
+  # 1.36 is the newest release with published schemas, and what the Bob admission
+  # policy was tested live against.
+  KUBE_VERSIONS: "1.30.0 1.36.0"
+  # Schemas are pinned to a commit so an upstream change cannot turn this check red or
+  # green by itself: the Kubernetes API schemas (kubeconform's default location, pinned)
+  # and the cert-manager Certificate/Issuer/ClusterIssuer schemas.
+  K8S_SCHEMAS: https://raw.githubusercontent.com/yannh/kubernetes-json-schema/e0c72a1bc5f409d1685c0e1323460c8a98cd7459/{{.NormalizedKubernetesVersion}}-standalone{{.StrictSuffix}}/{{.ResourceKind}}{{.KindSuffix}}.json
+  CRD_SCHEMAS: https://raw.githubusercontent.com/datreeio/CRDs-catalog/3eb90d47aba8d61919d4419dd38301536e32a94b/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json
+
+jobs:
+  chart:
+    name: chart (helm ${{ matrix.helm }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Helm 3: what the README install flow and customer sites use.
+          - helm: v3.22.1
+            sha256: 896cf63684a42a723d61c980369d6e588330927deb13676ca0d85006dd6da0ea
+          # Helm 4: the current major, and what IssTech workstations run.
+          - helm: v4.3.1
+            sha256: 0403a88ae20913d11b10a2467b50087721fea7581736da6b9d3992f5357fe54b
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install helm ${{ matrix.helm }} and kubeconform ${{ env.KUBECONFORM_VERSION }}
+        env:
+          HELM_VERSION: ${{ matrix.helm }}
+          HELM_SHA256: ${{ matrix.sha256 }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/bin" "$RUNNER_TEMP/dl"
+          cd "$RUNNER_TEMP/dl"
+          curl -fsSLo helm.tgz "https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz"
+          echo "${HELM_SHA256}  helm.tgz" | sha256sum -c -
+          tar xzf helm.tgz linux-amd64/helm
+          install -m 0755 linux-amd64/helm "$RUNNER_TEMP/bin/helm"
+          curl -fsSLo kc.tgz "https://github.com/yannh/kubeconform/releases/download/${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz"
+          echo "${KUBECONFORM_SHA256}  kc.tgz" | sha256sum -c -
+          tar xzf kc.tgz kubeconform
+          install -m 0755 kubeconform "$RUNNER_TEMP/bin/kubeconform"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/bin/helm" version
+          "$RUNNER_TEMP/bin/kubeconform" -v
+
+      - name: helm dependency build
+        run: |
+          set -euo pipefail
+          helm dependency build --skip-refresh .
+          # The subcharts are vendored: the build must not have changed or added anything.
+          if [ -n "$(git status --porcelain -- Chart.lock charts/)" ]; then
+            git status --porcelain -- Chart.lock charts/
+            echo "::error::helm dependency build changed Chart.lock or charts/ - commit the vendored subchart and an updated Chart.lock together"
+            exit 1
+          fi
+
+      - name: helm lint --strict
+        run: |
+          set -euo pipefail
+          helm lint --strict .
+          for f in ci/*-values.yaml; do
+            echo "--- with $f"
+            helm lint --strict . -f "$f"
+          done
+
+      - name: helm template
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/render"; mkdir -p "$out"
+          helm template issassist . --namespace issassist > "$out/default.yaml"
+          for f in ci/*-values.yaml; do
+            name=$(basename "$f" -values.yaml)
+            helm template issassist . --namespace issassist -f "$f" > "$out/$name.yaml"
+          done
+          {
+            echo "### Rendered with helm ${{ matrix.helm }}"
+            echo "| set | objects | sha256 |"
+            echo "|---|---:|---|"
+            for r in "$out"/*.yaml; do
+              echo "| $(basename "$r" .yaml) | $(grep -c '^kind:' "$r") | \`$(sha256sum < "$r" | cut -c1-16)\` |"
+            done
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Render checks (scripts/check_*_render.sh, check_readonly_role.sh)
+        run: |
+          set -uo pipefail
+          # check_bob_admission_live.sh needs a throwaway API server and the --live part
+          # of check_readonly_role.sh needs docker; both stay manual.
+          scripts=(scripts/check_*_render.sh scripts/check_readonly_role.sh)
+          [ -e "${scripts[0]}" ] || { echo "::error::no render check scripts found"; exit 1; }
+          failed=0; total_ok=0; total_fail=0
+          echo "| script | ok | FAIL |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|---|---:|---:|" >> "$GITHUB_STEP_SUMMARY"
+          for s in "${scripts[@]}"; do
+            echo "::group::$s"
+            # Actions runs steps with bash -e: catch the exit code instead of dying on it,
+            # so a failing script still prints its FAIL lines and the summary row.
+            if log=$(bash "$s" 2>&1); then rc=0; else rc=$?; fi
+            echo "$log"
+            echo "::endgroup::"
+            ok=$(grep -c '^ok' <<<"$log" || true); bad=$(grep -c '^FAIL' <<<"$log" || true)
+            total_ok=$((total_ok + ok)); total_fail=$((total_fail + bad))
+            echo "| $s | $ok | $bad |" >> "$GITHUB_STEP_SUMMARY"
+            if [ "$rc" -ne 0 ] || [ "$ok" -eq 0 ]; then
+              echo "::error::$s failed (exit $rc, $bad FAIL)"
+              grep '^FAIL' <<<"$log" || true
+              failed=1
+            fi
+          done
+          echo "Render checks: $total_ok ok, $total_fail FAIL" | tee -a "$GITHUB_STEP_SUMMARY"
+          exit $failed
+
+      - name: kubeconform
+        run: |
+          set -euo pipefail
+          echo "| Kubernetes | set | summary |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|---|---|---|" >> "$GITHUB_STEP_SUMMARY"
+          failed=0
+          for v in $KUBE_VERSIONS; do
+            for r in "$RUNNER_TEMP"/render/*.yaml; do
+              echo "--- Kubernetes $v, $(basename "$r")"
+              # No -ignore-missing-schemas: an object kind without a schema fails.
+              if log=$(kubeconform -strict -summary -output text -kubernetes-version "$v" \
+                  -schema-location "$K8S_SCHEMAS" -schema-location "$CRD_SCHEMAS" "$r" 2>&1); then rc=0; else rc=$?; fi
+              echo "$log"
+              echo "| $v | $(basename "$r" .yaml) | $(tail -1 <<<"$log") |" >> "$GITHUB_STEP_SUMMARY"
+              [ "$rc" -eq 0 ] || failed=1
+            done
+          done
+          exit $failed

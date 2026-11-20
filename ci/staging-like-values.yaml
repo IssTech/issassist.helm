@@ -1,0 +1,8 @@
+# Render set used by .github/workflows/chart.yml (IA-0046). Not an install file.
+# A shared cluster such as staging: no cluster-scoped RBAC from this chart or from
+# the secret-generator subchart (values.yaml says to set both false together).
+clusterScoped:
+  create: false
+kubernetes-secret-generator:
+  rbac:
+    clusterRole: false

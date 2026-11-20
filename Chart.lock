@@ -1,0 +1,9 @@
+dependencies:
+- name: kubernetes-secret-generator
+  repository: ""
+  version: 3.4.1
+- name: superset
+  repository: ""
+  version: 0.15.2
+digest: sha256:ef756d14ca0004d33df5556b484e023c68b2d0d638dc50de8047507291159662
+generated: "2026-11-20T12:22:41.821881596Z"

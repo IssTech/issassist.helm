@@ -22,3 +22,6 @@
 .vscode/
 scripts/
 _dev/
+# CI only: render sets and workflows are not part of the chart (IA-0046)
+ci/
+.github/

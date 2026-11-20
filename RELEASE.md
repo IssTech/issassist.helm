@@ -10,6 +10,35 @@ in `docs/projects/<date>-<slug>.md`, linked from the entry.
 
 ---
 
+## 1.6.0 — in development
+
+### The chart is checked on every pull request: lint, render checks and Kubernetes schema validation (IA-0046, #366)
+
+**What it is.** An automatic check that runs on every pull request into `review` or `master`
+and on every push to `review`. It proves the chart still installs cleanly before anything is
+merged, instead of relying on someone remembering to run the checks by hand. Until now the
+chart had no automatic checks at all, and `helm lint` failed outright.
+
+**Where it is.** GitHub Actions workflow `Chart` (`.github/workflows/chart.yml`), shown as
+*chart (helm v3.22.1)* and *chart (helm v4.3.1)* on each pull request. It runs
+`helm dependency build`, `helm lint --strict`, `helm template` with the default values and
+with the two render sets in `ci/` (a staging-like shared cluster, and every optional component
+switched on), all the `scripts/check_*_render.sh` scripts plus the render part of
+`scripts/check_readonly_role.sh`, and `kubeconform` against the Kubernetes 1.30 and 1.36 API
+schemas. The figures are printed in each run's summary.
+
+**What changed for them.** Nothing an installation renders: the output of `helm template` is
+byte-identical before and after this change, for the defaults, a staging-like values set and
+all optional components on. `Chart.yaml` now lists the vendored `kubernetes-secret-generator`
+subchart (3.4.1) as a dependency, which is what `helm lint` required; it is still always
+installed, with no new switch. A new `Chart.lock` records both vendored subcharts, and
+`helm dependency build` no longer needs to be run before `helm lint`. The chart version is
+unchanged. **Making the check required before merging is a repository setting the owner has
+to switch on** (branch protection for `review` and `master`). Detail:
+[`docs/projects/2026-11-20-chart-ci.md`](docs/projects/2026-11-20-chart-ci.md).
+
+---
+
 ## 1.5.0 — in development
 
 ### The chart is now version 1.5.0 and installs IssAssist 1.5.0 images
