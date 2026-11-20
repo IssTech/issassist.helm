@@ -1,0 +1,25 @@
+# Render set used by .github/workflows/chart.yml (IA-0046). Not an install file.
+# Every optional component switched on, so kubeconform sees every template that
+# the defaults leave out. Image references are placeholders that are never pulled.
+superset:
+  enabled: true
+pgAdmin:
+  enabled: true
+kastenConnector:
+  enabled: true
+  inventory: true
+api:
+  postgres:
+    readonlyRole:
+      enabled: true
+  avepointRunCheck:
+    enabled: true
+aiAnalysis:
+  debugWizard:
+    enabled: true
+  providers:
+    bob:
+      allowed: true
+      image: ghcr.io/isstech/issassist-bob-runner@sha256:0000000000000000000000000000000000000000000000000000000000000007
+      keyproxyImage: ghcr.io/isstech/issassist-bob-keyproxy@sha256:0000000000000000000000000000000000000000000000000000000000000008
+      existingSecret: issassist-ai-bob-key
