@@ -1,0 +1,2 @@
+{{- /* IA-0046 deliberate break (reverted next): lint renders in namespace "default" and passes; the template step renders in "issassist" and must go red. */ -}}
+{{- if eq .Release.Namespace "issassist" }}{{ fail "IA-0046 deliberate break: the template step must go red" }}{{- end }}
