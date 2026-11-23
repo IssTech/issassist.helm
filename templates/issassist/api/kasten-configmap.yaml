@@ -1,0 +1,26 @@
+{{/*
+Kasten (IA-0026 slice 2, isstech-issues#493): K10's namespace, where the API reads
+K10's own pod logs for the support .zip. values.yaml
+`kastenConnector.podLogs.namespace` -> this ConfigMap -> `envFrom` on the API ->
+IA_KASTEN_POD_LOGS_NAMESPACE -> `issassist.kasten.pod_logs.pod_logs_namespace`.
+
+Rendered whatever `kastenConnector.enabled` says: the connector is applied to each
+monitored cluster on its own, and the API needs the namespace for all of them.
+Read through `default dict` for `--reuse-values` from a release that never had the
+key. A value that is not a namespace name fails the render, and the API refuses it
+too (fail closed) rather than falling back to kasten-io.
+*/}}
+{{- if .Values.api.enabled }}
+{{- $kc := .Values.kastenConnector | default dict }}
+{{- $podLogs := $kc.podLogs | default dict }}
+{{- $ns := $podLogs.namespace | default "kasten-io" | toString }}
+{{- if not (regexMatch "^[a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?$" $ns) }}
+{{- fail "kastenConnector.podLogs.namespace must be a Kubernetes namespace name, such as kasten-io" }}
+{{- end }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: issassist-kasten
+data:
+  IA_KASTEN_POD_LOGS_NAMESPACE: {{ $ns | quote }}
+{{- end }}

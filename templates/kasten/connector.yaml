@@ -215,4 +215,62 @@ roleRef:
   kind: ClusterRole
   name: {{ $name }}
   apiGroup: rbac.authorization.k8s.io
+{{- /*
+  K10's own pod logs for the support .zip (IA-0026 slice 2, isstech-issues#493).
+  Opt-in with `kastenConnector.podLogs.enabled: true` (default false, decision 10);
+  only an explicit true grants it, as with `inventory`. A **Role** in K10's namespace,
+  never a ClusterRole rule: `list pods` and `get pods/log` there and nowhere else.
+  Never `pods/exec`, `pods/attach`, `pods/portforward`, Secrets or ConfigMaps.
+
+  IssAssist reads the logs only when a person ticks the file and presses Collect now
+  in Logs -> Send logs to IssTech support. Whether the Role is there is asked with a
+  SelfSubjectAccessReview, so the cluster page can say Granted / Not granted without
+  reading a log.
+
+  ACCEPTED RISK (to be confirmed by the security review): K10's logs can name
+  namespaces, applications and storage locations; IssAssist anonymises them, and
+  withholds any line that looks like it holds a credential, before anything leaves.
+*/}}
+{{- $podLogs := $kastenConnector.podLogs | default dict }}
+{{- if eq (toString $podLogs.enabled) "true" }}
+{{- $podLogsNs := $podLogs.namespace | default "kasten-io" | toString }}
+{{- if not (regexMatch "^[a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?$" $podLogsNs) }}
+{{- fail "kastenConnector.podLogs.namespace must be a Kubernetes namespace name, such as kasten-io" }}
+{{- end }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ $name }}-podlogs
+  namespace: {{ $podLogsNs }}
+  labels:
+    app.kubernetes.io/name: kasten-connector
+    app.kubernetes.io/part-of: issassist
+    app.kubernetes.io/component: monitoring
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["list"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ $name }}-podlogs
+  namespace: {{ $podLogsNs }}
+  labels:
+    app.kubernetes.io/name: kasten-connector
+    app.kubernetes.io/part-of: issassist
+    app.kubernetes.io/component: monitoring
+subjects:
+  - kind: ServiceAccount
+    name: {{ $name }}
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  kind: Role
+  name: {{ $name }}-podlogs
+  apiGroup: rbac.authorization.k8s.io
+{{- end }}
 {{- end }}

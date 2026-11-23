@@ -491,6 +491,15 @@ kastenConnector:
   # literal environment values over TLS to the IssAssist API; IssAssist discards them
   # before storing anything (an allow-list), but they do cross the wire.
   inventory: false
+  # K10's own pod logs for Logs -> Send logs to IssTech support (IA-0026, #493).
+  # true adds a Role in `namespace` that can list pods and read their logs, and
+  # nothing else (no exec, no Secrets). Only an explicit true grants it. Re-apply the
+  # connector on each monitored cluster where you want it: the cluster page then says
+  # "Pod logs for support: Granted". `namespace` is also given to the IssAssist API
+  # (IA_KASTEN_POD_LOGS_NAMESPACE), so it must be K10's namespace on every cluster.
+  podLogs:
+    enabled: false
+    namespace: kasten-io
 
 imageCredentials:
   registry: "ghcr.io"

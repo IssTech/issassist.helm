@@ -8,6 +8,8 @@ pgAdmin:
 kastenConnector:
   enabled: true
   inventory: true
+  podLogs:
+    enabled: true
 api:
   postgres:
     readonlyRole:
