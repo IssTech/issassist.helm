@@ -73,6 +73,9 @@ spec:
             # IA_AVEPOINT_ALLOWED_HOSTS: where the AvePoint credential may go (#437)
             - configMapRef:
                 name: issassist-avepoint
+            # IA_KASTEN_POD_LOGS_NAMESPACE: K10's namespace for support pod logs (#493)
+            - configMapRef:
+                name: issassist-kasten
           env:
             # Every log line names the pod and node it came from: replicas run
             # on different nodes, and a network fault is often only one of them.
