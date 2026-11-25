@@ -1,0 +1,66 @@
+# Dependabot version updates (IA-0016, #294, 2026/11/23).
+#
+# ONE PULL REQUEST PER ECOSYSTEM FOR MINOR AND PATCH. Every entry groups its
+# minor and patch updates, so a week's routine bumps arrive as one pull request
+# per ecosystem instead of one per package. Seventeen alerts accumulating one
+# pull request at a time is what produced IssAssist-Mission#210, and IssDev's
+# first ungrouped run opened 20 pull requests in a day and used up the
+# organisation's Actions minutes. MAJOR updates stay ungrouped on purpose: each
+# arrives as its own pull request, because a major is a decision, not routine.
+# Give a new entry a group too.
+#
+# TARGET BRANCH IS `review`. Dependabot defaults to the default branch, and
+# nothing lands on `main` except a human-merged `review` -> `main` release.
+# `target-branch` is only valid inside an entry, so every entry carries it.
+# Security updates ignore it (GitHub always opens those against the default
+# branch): retarget such a pull request to `review` before merging it.
+#
+# COOLDOWN 7 DAYS, as in IssControl, IssCRM and IssDev (owner-approved
+# 2026/11/03): a version is not proposed until it has been public for a week,
+# which is when a hijacked release has usually been yanked. Security updates
+# are not delayed by it.
+#
+# NO AUTO-MERGE. Every pull request this opens is merged by a person after CI
+# is green. Whether patch updates may merge themselves is an open proposal on
+# IssTech/isstech-issues#445, not something this file decides.
+
+version: 2
+
+updates:
+  # Workflows under .github/workflows. The subcharts under charts/ are
+  # vendored (Chart.lock has no repository), so there is no helm entry, and
+  # the image tags in values.yaml are bumped by the release flow, not here.
+  - package-ecosystem: github-actions
+    directory: "/"
+    target-branch: review
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Stockholm
+    open-pull-requests-limit: 5
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: "ci"
+    groups:
+      actions-minor-patch:
+        update-types: ["minor", "patch"]
+
+  # The check scripts' Python tooling (scripts/uv.lock).
+  - package-ecosystem: uv
+    directory: "/scripts"
+    target-branch: review
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Stockholm
+    open-pull-requests-limit: 5
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: "deps(scripts)"
+    groups:
+      scripts-python-minor-patch:
+        update-types: ["minor", "patch"]
