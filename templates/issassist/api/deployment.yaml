@@ -110,6 +110,10 @@ spec:
             {{- end }}
             - name: IA_FORWARDED_ALLOW_IPS
               value: {{ replace " " "" $fwd | quote }}
+            # IssTech's Blueprint library online (IA-0033). Empty: the copy bundled in the
+            # image only. Only an https:// URL is used; anything else is ignored by the API.
+            - name: IA_KASTEN_BLUEPRINT_LIBRARY_URL
+              value: {{ ((((.Values.api | default dict).kasten | default dict).blueprintLibrary | default dict).url | default "") | quote }}
             # Whether logs may be sent to IssTech support at all. The administrator's
             # switch under Reporting decides whether they are; this only removes the
             # possibility.

@@ -231,6 +231,16 @@ api:
   # Setting it also trusts X-Forwarded-Proto, so re-test SSO/SAML sign-in afterwards.
   forwardedAllowIps: ""
 
+  # IssProtect for DevOps (Kasten), IssAssist 2.0 behind Preview `kasten-blueprints`
+  # (IA-0032/IA-0033). IssTech's tested Kanister Blueprint library ships inside the API
+  # image, so an air-gapped Dark Site has it with no network. `url` names a newer copy
+  # online (the base where `index.json` lives, https only); it is read at most once a
+  # day, each Blueprint is checked against the index's SHA-256, and any failure falls
+  # back to the bundled copy. Empty (default): bundled only. Nothing is ever sent there.
+  kasten:
+    blueprintLibrary:
+      url: ""
+
   service:
     # Can be "ClusterIP", "NodePort" or "LoadBalancer".
     type: ClusterIP
