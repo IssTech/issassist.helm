@@ -500,6 +500,45 @@ kastenConnector:
   podLogs:
     enabled: false
     namespace: kasten-io
+  # Kasten restore tests (IA-0050, #539): restore a restore point into ONE pre-created
+  # restore-test namespace, check the application, scan it (yara below) and empty the
+  # namespace again. Off by default. true renders templates/kasten/restore-tests.yaml:
+  # a SECOND ServiceAccount (never the connector's token) with `admin` in `namespace`
+  # only, a Role there to create RestoreActions (no delete/update), and a ClusterRole to
+  # get/list restore points. Plus deny-all NetworkPolicies, a ResourceQuota and a
+  # LimitRange in that namespace. No cluster-wide namespace rights.
+  # Operator steps, per cluster that runs restore tests:
+  #   1. create the namespace (or createNamespace: true) and exclude it from every
+  #      Kasten policy;
+  #   2. apply this template there (see the comment at its top);
+  #   3. register the token of `<serviceAccountName>-token` for the cluster in
+  #      IssAssist (PUT /kasten/<cluster>/restore-test-access/).
+  # ACCEPTED RISK: a restore copies the application's Secrets into the namespace, where
+  # this key can read them. Treat the token like those secrets.
+  restoreTests:
+    enabled: false
+    # Teardown EMPTIES this namespace: never point it at one with anything else in it.
+    # default, kube-*, kasten-io and the release namespace are refused.
+    namespace: issassist-restore-test
+    createNamespace: false
+    serviceAccountName: issassist-restore-test
+    # The probe + YARA scanner image (issassist-api docker/restore-scanner), by digest:
+    # ghcr.io/isstech/issassist-restore-scanner@sha256:... Empty: no run starts.
+    image: ""
+    timeoutMinutes: 60          # hard limit per run (10-180); teardown always follows
+    keepOnFailureMaxHours: 72   # most a failed app check is kept for troubleshooting
+    maxReplicas: 1              # every Deployment/StatefulSet is restored with this
+    quota:
+      cpu: "4"
+      memory: 8Gi
+      storage: 200Gi
+      pods: "20"
+  # Ransomware scan of the restored volumes (IA-0051, #540). Needs restoreTests. Rules:
+  # Yara-Rules/rules ransomware set (GPL-2.0, unmodified, pinned) + IssTech's harmless
+  # test rule, baked into the image above, so it works air-gapped.
+  yara:
+    enabled: false
+    maxFileSizeMiB: 256
 
 imageCredentials:
   registry: "ghcr.io"

@@ -9,6 +9,10 @@ monitored cluster on its own, and the API needs the namespace for all of them.
 Read through `default dict` for `--reuse-values` from a release that never had the
 key. A value that is not a namespace name fails the render, and the API refuses it
 too (fail closed) rather than falling back to kasten-io.
+
+Restore tests (IA-0050 #539, IA-0051 #540): `kastenConnector.restoreTests.*` and
+`kastenConnector.yara.*` -> IA_KASTEN_RT_* / IA_KASTEN_YARA_* ->
+`issassist.kasten.restore_tests.settings`. Only an explicit true switches either on.
 */}}
 {{- if .Values.api.enabled }}
 {{- $kc := .Values.kastenConnector | default dict }}
@@ -23,4 +27,14 @@ metadata:
   name: issassist-kasten
 data:
   IA_KASTEN_POD_LOGS_NAMESPACE: {{ $ns | quote }}
+  {{- $rt := $kc.restoreTests | default dict }}
+  {{- $yara := $kc.yara | default dict }}
+  IA_KASTEN_RT_ENABLED: {{ eq (toString $rt.enabled) "true" | ternary "true" "false" | quote }}
+  IA_KASTEN_RT_NAMESPACE: {{ $rt.namespace | default "issassist-restore-test" | toString | quote }}
+  IA_KASTEN_RT_IMAGE: {{ $rt.image | default "" | toString | quote }}
+  IA_KASTEN_RT_TIMEOUT_MINUTES: {{ $rt.timeoutMinutes | default 60 | toString | quote }}
+  IA_KASTEN_RT_KEEP_MAX_HOURS: {{ (hasKey $rt "keepOnFailureMaxHours") | ternary (toString $rt.keepOnFailureMaxHours) "72" | quote }}
+  IA_KASTEN_RT_MAX_REPLICAS: {{ $rt.maxReplicas | default 1 | toString | quote }}
+  IA_KASTEN_YARA_ENABLED: {{ eq (toString $yara.enabled) "true" | ternary "true" "false" | quote }}
+  IA_KASTEN_YARA_MAX_FILE_MIB: {{ $yara.maxFileSizeMiB | default 256 | toString | quote }}
 {{- end }}

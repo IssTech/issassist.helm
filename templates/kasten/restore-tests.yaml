@@ -1,0 +1,233 @@
+{{/*
+IssProtect for DevOps — Kasten restore tests (IA-0050 isstech-issues#539, IA-0051 #540).
+
+What this is
+------------
+The identity IssAssist uses to restore a Kasten restore point into ONE pre-created
+restore-test namespace, check the application, scan the restored volumes for
+ransomware, and empty the namespace again. It is a SECOND key, never the read-only
+connector's (templates/kasten/connector.yaml), and it renders only when
+`kastenConnector.restoreTests.enabled` is true (default false).
+
+Rights, and why each one (owner decision 2026/11/26, like the IBM restore tests):
+  * `admin` in the restore-test namespace only (RoleBinding to the built-in
+    ClusterRole): inspect what was restored, scale it to 0, start the probe and
+    scanner pods, empty the namespace afterwards.
+  * a Role in the restore-test namespace: create/get/list/watch RestoreActions. No
+    delete, no update. NOT a ClusterRole: Kasten 9 requires a RestoreAction to sit in
+    its target namespace, so a cluster-wide `create` would let this key restore over
+    any production namespace in place (verified on the hemma lab, 2026/11/26).
+  * a ClusterRole: get/list RestorePoints and RestorePointContents, nothing else.
+No cluster-wide namespace rights and no admission policy. Kasten performs the restore
+with its own ServiceAccount.
+
+ACCEPTED RISK, stated plainly: a restore copies the application's Secrets into the
+restore-test namespace, where this key has `admin` and can read them. Treat this
+token as sensitive as the source applications' secrets. IssAssist never reads a
+restored Secret (a SQL check names one, and the probe pod gets it by secretKeyRef),
+never logs one, and empties the namespace as soon as a run ends (a failed app check
+is kept at most `keepOnFailureMaxHours`; a scan finding is removed at once).
+
+The guard objects below (NetworkPolicies, quota, RoleBindings, the token) carry
+`issassist.io/restore-test-guard: "true"`; teardown never deletes them, and never
+deletes RBAC, ServiceAccounts or ServiceAccount tokens whatever their labels.
+
+Installed on every cluster that runs restore tests, like the connector:
+
+    kubectl create namespace issassist-restore-test   # unless createNamespace: true
+    helm template issassist . \
+      --set kastenConnector.restoreTests.enabled=true \
+      -s templates/kasten/restore-tests.yaml \
+      | kubectl --context <cluster> apply -f -
+
+Exclude the restore-test namespace from every Kasten policy (a policy selecting all
+namespaces would otherwise back up the copies).
+*/}}
+{{- $kc := .Values.kastenConnector | default dict }}
+{{- $rt := $kc.restoreTests | default dict }}
+{{- if eq (toString $rt.enabled) "true" }}
+{{- $ns := $rt.namespace | default "issassist-restore-test" | toString }}
+{{- if not (regexMatch "^[a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?$" $ns) }}
+{{- fail "kastenConnector.restoreTests.namespace must be a Kubernetes namespace name, such as issassist-restore-test" }}
+{{- end }}
+{{- if or (has $ns (list "default" "kube-system" "kube-public" "kube-node-lease" "kasten-io" "issassist" .Release.Namespace)) (hasPrefix "kube-" $ns) }}
+{{- fail "kastenConnector.restoreTests.namespace must be a namespace set aside for restore tests: teardown empties it" }}
+{{- end }}
+{{- $sa := $rt.serviceAccountName | default "issassist-restore-test" | toString }}
+{{- $quota := $rt.quota | default dict }}
+{{- $guard := dict "app.kubernetes.io/part-of" "issassist" "app.kubernetes.io/component" "restore-test" "issassist.io/restore-test-guard" "true" }}
+{{- if eq (toString $rt.createNamespace) "true" }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ $ns }}
+  labels:
+    issassist.io/restore-test: "true"
+    app.kubernetes.io/part-of: issassist
+    app.kubernetes.io/component: restore-test
+---
+{{- end }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ $sa }}
+  namespace: {{ $ns }}
+  labels: {{- toYaml $guard | nindent 4 }}
+automountServiceAccountToken: false
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ $sa }}-token
+  namespace: {{ $ns }}
+  labels: {{- toYaml $guard | nindent 4 }}
+  annotations:
+    kubernetes.io/service-account.name: {{ $sa }}
+type: kubernetes.io/service-account-token
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ $sa }}-admin
+  namespace: {{ $ns }}
+  labels: {{- toYaml $guard | nindent 4 }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ $sa }}
+    namespace: {{ $ns }}
+roleRef:
+  kind: ClusterRole
+  name: admin
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ $sa }}-kasten
+  namespace: {{ $ns }}
+  labels: {{- toYaml $guard | nindent 4 }}
+rules:
+  # In the restore-test namespace only. No delete, no update: the RestoreAction is
+  # Kasten's own record of the restore and stays.
+  - apiGroups: ["actions.kio.kasten.io"]
+    resources: ["restoreactions"]
+    verbs: ["create", "get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ $sa }}-kasten
+  namespace: {{ $ns }}
+  labels: {{- toYaml $guard | nindent 4 }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ $sa }}
+    namespace: {{ $ns }}
+roleRef:
+  kind: Role
+  name: {{ $sa }}-kasten
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ $sa }}-kasten
+  labels:
+    app.kubernetes.io/part-of: issassist
+    app.kubernetes.io/component: restore-test
+rules:
+  # Which restore point to restore. Read-only.
+  - apiGroups: ["apps.kio.kasten.io"]
+    resources: ["restorepoints", "restorepointcontents"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ $sa }}-kasten
+  labels:
+    app.kubernetes.io/part-of: issassist
+    app.kubernetes.io/component: restore-test
+subjects:
+  - kind: ServiceAccount
+    name: {{ $sa }}
+    namespace: {{ $ns }}
+roleRef:
+  kind: ClusterRole
+  name: {{ $sa }}-kasten
+  apiGroup: rbac.authorization.k8s.io
+---
+# Nothing in, nothing out. IssAssist refuses to run without this policy.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: issassist-restore-test-deny-all
+  namespace: {{ $ns }}
+  labels: {{- toYaml $guard | nindent 4 }}
+spec:
+  podSelector: {}
+  policyTypes: ["Ingress", "Egress"]
+---
+# The restored application and the probe may talk to each other and resolve names.
+# The YARA scanner is excluded: it has no network at all.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: issassist-restore-test-intra-namespace
+  namespace: {{ $ns }}
+  labels: {{- toYaml $guard | nindent 4 }}
+spec:
+  podSelector:
+    matchExpressions:
+      - key: issassist.io/role
+        operator: NotIn
+        values: ["yara-scanner"]
+  policyTypes: ["Ingress", "Egress"]
+  ingress:
+    - from:
+        - podSelector: {}
+  egress:
+    - to:
+        - podSelector: {}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: issassist-restore-test
+  namespace: {{ $ns }}
+  labels: {{- toYaml $guard | nindent 4 }}
+spec:
+  hard:
+    requests.cpu: {{ $quota.cpu | default "4" | quote }}
+    requests.memory: {{ $quota.memory | default "8Gi" | quote }}
+    requests.storage: {{ $quota.storage | default "200Gi" | quote }}
+    pods: {{ $quota.pods | default "20" | quote }}
+    services.loadbalancers: "0"
+    services.nodeports: "0"
+---
+# Gives restored containers without requests a default, so the quota admits them.
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: issassist-restore-test
+  namespace: {{ $ns }}
+  labels: {{- toYaml $guard | nindent 4 }}
+spec:
+  limits:
+    - type: Container
+      defaultRequest:
+        cpu: 100m
+        memory: 128Mi
+      default:
+        cpu: "1"
+        memory: 1Gi
+{{- end }}
