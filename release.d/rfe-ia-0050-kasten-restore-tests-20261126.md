@@ -14,15 +14,17 @@ date: 2026/11/26
   `IA_KASTEN_YARA_*` through the `issassist-kasten` ConfigMap, and a new generated Secret
   `api-kasten-rt-secret-key` encrypts the stored keys.
 - **What changed for them:** Nothing until `kastenConnector.restoreTests.enabled: true` (only an
-  explicit true). Then, in the restore-test namespace only: a ServiceAccount and its token, a
-  RoleBinding to `admin`, a Role to create/get/list/watch RestoreActions (no delete, no
+  explicit true). Then: a ServiceAccount and its token **in the release namespace** (never
+  in the restore-test namespace, where a restored pod could mount it); in the restore-test
+  namespace only, a RoleBinding to `admin`, a Role to create/get/list/watch RestoreActions (no delete, no
   update), deny-all NetworkPolicies (the scanner gets no network at all), a ResourceQuota (no
   LoadBalancers or NodePorts) and a LimitRange; plus one ClusterRole that can only get/list
   restore points. **No cluster-wide namespace rights and no admission policy.** The connector is
   unchanged. `default`, `kube-*`, `kasten-io` and the release namespace are refused as the
   restore-test namespace, because teardown empties it.
-- **Operator steps:** **create the namespace (or `createNamespace: true`) and exclude it from
-  every Kasten policy; apply the template on each Kasten cluster that runs restore tests
+- **Operator steps:** **create the namespace (or `createNamespace: true`), label it
+  `issassist.io/restore-test=true` and `pod-security.kubernetes.io/enforce=baseline`, and
+  exclude it from every Kasten policy; apply the template on each Kasten cluster that runs restore tests
   (`helm template … -s templates/kasten/restore-tests.yaml | kubectl apply -f -`); register the
   `issassist-restore-test-token` token for that cluster in IssAssist; set `image` to the
   `issassist-restore-scanner` digest.** Treat the token as sensitive as the applications'

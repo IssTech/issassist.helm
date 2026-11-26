@@ -28,13 +28,16 @@ restored Secret (a SQL check names one, and the probe pod gets it by secretKeyRe
 never logs one, and empties the namespace as soon as a run ends (a failed app check
 is kept at most `keepOnFailureMaxHours`; a scan finding is removed at once).
 
-The guard objects below (NetworkPolicies, quota, RoleBindings, the token) carry
-`issassist.io/restore-test-guard: "true"`; teardown never deletes them, and never
-deletes RBAC, ServiceAccounts or ServiceAccount tokens whatever their labels.
+Teardown never deletes RBAC, ServiceAccounts, NetworkPolicies, quotas or
+ServiceAccount tokens, whatever their labels (a label can come back with a restored
+object, so it is not trusted). The `issassist.io/restore-test-guard` label on the
+objects below is informational.
 
 Installed on every cluster that runs restore tests, like the connector:
 
     kubectl create namespace issassist-restore-test   # unless createNamespace: true
+    kubectl label namespace issassist-restore-test \
+      issassist.io/restore-test=true pod-security.kubernetes.io/enforce=baseline
     helm template issassist . \
       --set kastenConnector.restoreTests.enabled=true \
       -s templates/kasten/restore-tests.yaml \
@@ -63,15 +66,24 @@ metadata:
   name: {{ $ns }}
   labels:
     issassist.io/restore-test: "true"
+    # Pod Security Admission (security review H2): RBAC `admin` does not limit pod
+    # specs, so without this the key, or a restored workload, could run privileged
+    # or hostPath pods. Baseline still admits the scanner (root, DAC_OVERRIDE only).
+    # IssAssist refuses a namespace without it.
+    pod-security.kubernetes.io/enforce: baseline
     app.kubernetes.io/part-of: issassist
     app.kubernetes.io/component: restore-test
 ---
 {{- end }}
+# The key's ServiceAccount and token live in the release namespace, NEVER in the
+# restore-test namespace: any pod restored there could otherwise mount the token by
+# name (security review H1, 2026/11/26). IssAssist refuses a restore-test namespace
+# that holds a ServiceAccount token, and a key whose ServiceAccount lives in it.
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: {{ $sa }}
-  namespace: {{ $ns }}
+  namespace: {{ .Release.Namespace }}
   labels: {{- toYaml $guard | nindent 4 }}
 automountServiceAccountToken: false
 ---
@@ -79,7 +91,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: {{ $sa }}-token
-  namespace: {{ $ns }}
+  namespace: {{ .Release.Namespace }}
   labels: {{- toYaml $guard | nindent 4 }}
   annotations:
     kubernetes.io/service-account.name: {{ $sa }}
@@ -94,7 +106,7 @@ metadata:
 subjects:
   - kind: ServiceAccount
     name: {{ $sa }}
-    namespace: {{ $ns }}
+    namespace: {{ .Release.Namespace }}
 roleRef:
   kind: ClusterRole
   name: admin
@@ -122,7 +134,7 @@ metadata:
 subjects:
   - kind: ServiceAccount
     name: {{ $sa }}
-    namespace: {{ $ns }}
+    namespace: {{ .Release.Namespace }}
 roleRef:
   kind: Role
   name: {{ $sa }}-kasten
@@ -151,7 +163,7 @@ metadata:
 subjects:
   - kind: ServiceAccount
     name: {{ $sa }}
-    namespace: {{ $ns }}
+    namespace: {{ .Release.Namespace }}
 roleRef:
   kind: ClusterRole
   name: {{ $sa }}-kasten

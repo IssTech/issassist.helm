@@ -508,11 +508,13 @@ kastenConnector:
   # get/list restore points. Plus deny-all NetworkPolicies, a ResourceQuota and a
   # LimitRange in that namespace. No cluster-wide namespace rights.
   # Operator steps, per cluster that runs restore tests:
-  #   1. create the namespace (or createNamespace: true) and exclude it from every
-  #      Kasten policy;
+  #   1. create the namespace (or createNamespace: true), label it
+  #      issassist.io/restore-test=true and pod-security.kubernetes.io/enforce=baseline,
+  #      and exclude it from every Kasten policy;
   #   2. apply this template there (see the comment at its top);
-  #   3. register the token of `<serviceAccountName>-token` for the cluster in
-  #      IssAssist (PUT /kasten/<cluster>/restore-test-access/).
+  #   3. register the token of `<serviceAccountName>-token` (in the release namespace,
+  #      never in the restore-test one) for the cluster in IssAssist
+  #      (PUT /kasten/<cluster>/restore-test-access/).
   # ACCEPTED RISK: a restore copies the application's Secrets into the namespace, where
   # this key can read them. Treat the token like those secrets.
   restoreTests:

@@ -46,6 +46,15 @@ for bad in default kube-system kube-foo kasten-io Bad_NS; do
   if render "${on[@]}" --set kastenConnector.restoreTests.namespace=$bad | grep -qE 'must be a (namespace set aside|Kubernetes namespace name)'
   then ok "namespace $bad is refused"; else no "namespace $bad is refused"; fi
 done
+# The key never lives where restored workloads land (security review H1).
+key=$(helm template t . --namespace issassist-key -s templates/kasten/restore-tests.yaml "${on[@]}" 2>&1)
+sa=$(echo "$key" | awk '/^kind: ServiceAccount$/,/^---/'; echo "$key" | awk '/^kind: Secret$/,/^---/')
+if echo "$sa" | grep -q 'namespace: issassist-key' && ! echo "$sa" | grep -q 'namespace: issassist-restore-test'
+then ok "the key's ServiceAccount and token are outside the restore-test namespace"
+else no "the key's ServiceAccount and token are outside the restore-test namespace"; fi
+if [ "$(echo "$key" | grep -c 'namespace: issassist-key')" -ge 5 ]; then ok "every binding names the key in its own namespace"
+else no "every binding names the key in its own namespace"; fi
+expect "createNamespace enforces Pod Security baseline" 'pod-security.kubernetes.io/enforce: baseline' -- "${on[@]}" --set kastenConnector.restoreTests.createNamespace=true
 # The connector stays read-only whatever restore tests say.
 con() { helm template t . -s templates/kasten/connector.yaml --set kastenConnector.enabled=true "$@" 2>&1; }
 if [ "$(con | md5sum)" = "$(con "${on[@]}" | md5sum)" ]; then ok "the connector is unchanged by restore tests"
