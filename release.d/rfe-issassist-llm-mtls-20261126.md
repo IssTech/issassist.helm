@@ -22,4 +22,6 @@ date: 2026/11/26
   this installation's leaf certificate (one per install, e.g. CN
   `issassist-api-staging`), run its copier into this namespace, and add the CN to
   ghostunnel's `--allow-cn` list**, then make sure the CA bundle ConfigMap is synced here.
+  **Also raise `aiAnalysis.providers.local.dailyCap` / `dailyCapMax` above 0 (EUR): they
+  default to 0, which stops an endpoint outside the cluster even with a price set.**
 - **Where the detail is:** [issassist-api docs/projects/2026-11-26-issassist-llm-mtls.md](https://github.com/IssTech/issassist-api/blob/review/docs/projects/2026-11-26-issassist-llm-mtls.md)
