@@ -13,6 +13,9 @@ too (fail closed) rather than falling back to kasten-io.
 Restore tests (IA-0050 #539, IA-0051 #540): `kastenConnector.restoreTests.*` and
 `kastenConnector.yara.*` -> IA_KASTEN_RT_* / IA_KASTEN_YARA_* ->
 `issassist.kasten.restore_tests.settings`. Only an explicit true switches either on.
+IA_KASTEN_RT_KASTEN_NAMESPACE is K10's namespace again (`restoreTests.kastenNamespace`,
+else `podLogs.namespace`): the API checks there that the restore-test key can NOT
+create TransformSets, which Kasten 9 requires before it applies any transform.
 */}}
 {{- if .Values.api.enabled }}
 {{- $kc := .Values.kastenConnector | default dict }}
@@ -35,6 +38,11 @@ data:
   IA_KASTEN_RT_TIMEOUT_MINUTES: {{ $rt.timeoutMinutes | default 60 | toString | quote }}
   IA_KASTEN_RT_KEEP_MAX_HOURS: {{ (hasKey $rt "keepOnFailureMaxHours") | ternary (toString $rt.keepOnFailureMaxHours) "72" | quote }}
   IA_KASTEN_RT_MAX_REPLICAS: {{ $rt.maxReplicas | default 1 | toString | quote }}
+  {{- $k10 := $rt.kastenNamespace | default $ns | toString }}
+  {{- if not (regexMatch "^[a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?$" $k10) }}
+  {{- fail "kastenConnector.restoreTests.kastenNamespace must be a Kubernetes namespace name, such as kasten-io" }}
+  {{- end }}
+  IA_KASTEN_RT_KASTEN_NAMESPACE: {{ $k10 | quote }}
   IA_KASTEN_YARA_ENABLED: {{ eq (toString $yara.enabled) "true" | ternary "true" "false" | quote }}
   IA_KASTEN_YARA_MAX_FILE_MIB: {{ $yara.maxFileSizeMiB | default 256 | toString | quote }}
 {{- end }}

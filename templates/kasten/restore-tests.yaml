@@ -21,6 +21,21 @@ Rights, and why each one (owner decision 2026/11/26, like the IBM restore tests)
 No cluster-wide namespace rights and no admission policy. Kasten performs the restore
 with its own ServiceAccount.
 
+No Kasten transforms, and so no TransformSet rights (hemma lab, Kasten 9.0.11,
+2026/11/26): Kasten answers 403 "user cannot use inline transformations" to any
+RestoreAction with a transform, a transformSetRef included, unless the caller may
+`create` `config.kio.kasten.io` transformsets (`enable-inline-transforms`) in Kasten's
+namespace. That grant would let this key have Kasten patch what it restores, with
+Kasten's rights. Instead the RestoreAction leaves Ingress/Route/HTTPRoute/
+NetworkPolicy out by filter, the quota below admits no LoadBalancer or NodePort
+Service, the deny-all policy admits no traffic, and IssAssist deletes anything
+exposing and caps replicas right after Kasten finishes. IssAssist refuses a key that
+could create TransformSets.
+
+No imagePullSecrets: the probe/scanner image is public (ghcr.io/isstech/
+issassist-restore-scanner, owner decision 2026/11/26), or a mirror the nodes
+authenticate to. A registry Secret here could be mounted by any restored pod.
+
 ACCEPTED RISK, stated plainly: a restore copies the application's Secrets into the
 restore-test namespace, where this key has `admin` and can read them. Treat this
 token as sensitive as the source applications' secrets. IssAssist never reads a
@@ -124,6 +139,16 @@ rules:
   - apiGroups: ["actions.kio.kasten.io"]
     resources: ["restoreactions"]
     verbs: ["create", "get", "list", "watch"]
+  # `admin` does not cover Gateway API routes or OpenShift Routes. The RestoreAction
+  # leaves them out; these let IssAssist confirm none is there after a restore, and
+  # delete one if it is (the containment Kasten transforms would otherwise have done),
+  # and let teardown empty them. In this namespace only.
+  - apiGroups: ["gateway.networking.k8s.io"]
+    resources: ["httproutes"]
+    verbs: ["get", "list", "delete", "deletecollection"]
+  - apiGroups: ["route.openshift.io"]
+    resources: ["routes"]
+    verbs: ["get", "list", "delete", "deletecollection"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding

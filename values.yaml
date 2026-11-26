@@ -514,7 +514,14 @@ kastenConnector:
   #   2. apply this template there (see the comment at its top);
   #   3. register the token of `<serviceAccountName>-token` (in the release namespace,
   #      never in the restore-test one) for the cluster in IssAssist
-  #      (PUT /kasten/<cluster>/restore-test-access/).
+  #      (PUT /kasten/<cluster>/restore-test-access/; needs kasten:edit as well as
+  #      kasten:restore_test:edit);
+  #   4. in IssAssist, a Kasten administrator (kasten:edit) lists the application
+  #      namespaces that may be restore-tested on that cluster. Empty: none, so a
+  #      cluster that also runs other workloads never has them restored by accident.
+  # No Kasten transforms: Kasten 9 accepts them only from a caller allowed to create
+  # TransformSets in its namespace, which this key must not be. Exposure and replicas
+  # are contained in the namespace instead (filters, quota, deny-all, the runner).
   # ACCEPTED RISK: a restore copies the application's Secrets into the namespace, where
   # this key can read them. Treat the token like those secrets.
   restoreTests:
@@ -526,7 +533,15 @@ kastenConnector:
     serviceAccountName: issassist-restore-test
     # The probe + YARA scanner image (issassist-api docker/restore-scanner), by digest:
     # ghcr.io/isstech/issassist-restore-scanner@sha256:... Empty: no run starts.
+    # Public image, no pull secret (owner decision 2026/11/26). Pulled WITHOUT
+    # imagePullSecrets on purpose: a registry Secret in the restore-test namespace could be
+    # mounted by any restored pod and would be emptied by teardown. Dark Site: mirror it
+    # to a registry the nodes already authenticate to (containerd/k3s registries.yaml,
+    # OpenShift's global pull secret, ECR node role).
     image: ""
+    # Kasten's own namespace. Empty: podLogs.namespace (kasten-io). Only used to check
+    # that the key can NOT create TransformSets there (Kasten 9's gate for transforms).
+    kastenNamespace: ""
     timeoutMinutes: 60          # hard limit per run (10-180); teardown always follows
     keepOnFailureMaxHours: 72   # most a failed app check is kept for troubleshooting
     maxReplicas: 1              # every Deployment/StatefulSet is restored with this

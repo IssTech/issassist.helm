@@ -29,8 +29,18 @@ role=$(echo "$out" | awk '/^kind: Role$/,/^---/')
 if echo "$role" | grep -q 'namespace: issassist-restore-test' \
    && echo "$role" | grep -q 'verbs: \["create", "get", "list", "watch"\]'
 then ok "RestoreActions only in the restore-test namespace, no delete/update"; else no "RestoreActions only in the restore-test namespace, no delete/update"; fi
+if echo "$role" | grep -q 'resources: \["httproutes"\]' && echo "$role" | grep -q 'resources: \["routes"\]'
+then ok "exposing routes can be removed in the restore-test namespace"; else no "exposing routes can be removed in the restore-test namespace"; fi
 expect_not "never namespaces cluster-wide"   'resources: \["namespaces"\]' -- "${on[@]}"
 expect_not "no admission policy"             'ValidatingAdmissionPolicy' -- "${on[@]}"
+# Kasten 9 accepts transforms on a RestoreAction only from a caller allowed to create
+# TransformSets in Kasten's namespace; that would let the key make Kasten patch what it
+# restores, with Kasten's rights. IssAssist sends none and refuses a key that could.
+expect_not "no TransformSet rights (Kasten transforms)" 'transformsets' -- "${on[@]}"
+expect_not "nothing in Kasten's namespace"   'namespace: kasten-io' -- "${on[@]}"
+# No registry Secret in the restore-test namespace: any restored pod could mount it,
+# and teardown empties Secrets there by kind (security review M2).
+expect_not "no imagePullSecrets for the restore-test namespace" '(imagePullSecrets|dockerconfigjson)' -- "${on[@]}"
 expect_not "never escalate/bind/impersonate" '"(escalate|bind|impersonate)"' -- "${on[@]}"
 expect "admin only by RoleBinding"           'name: admin' -- "${on[@]}"
 if [ "$(echo "$out" | grep -c '^kind: ClusterRoleBinding$')" = 1 ] && ! echo "$out" | awk '/^kind: ClusterRoleBinding$/,/^---/' | grep -q 'name: admin'
@@ -65,5 +75,7 @@ cm | grep -q 'IA_KASTEN_RT_ENABLED: "false"' && ok "API: off by default" || no "
 cm | grep -q 'IA_KASTEN_YARA_ENABLED: "false"' && ok "API: yara off by default" || no "API: yara off by default"
 cm "${on[@]}" --set kastenConnector.yara.enabled=true | grep -q 'IA_KASTEN_YARA_ENABLED: "true"' && ok "API: yara on" || no "API: yara on"
 cm "${on[@]}" --set kastenConnector.restoreTests.image=img@sha256:1 | grep -q 'IA_KASTEN_RT_IMAGE: "img@sha256:1"' && ok "API: image passed" || no "API: image passed"
+cm | grep -q 'IA_KASTEN_RT_KASTEN_NAMESPACE: "kasten-io"' && ok "API: Kasten's namespace defaults to kasten-io" || no "API: Kasten's namespace defaults to kasten-io"
+cm "${on[@]}" --set kastenConnector.restoreTests.kastenNamespace=k10 | grep -q 'IA_KASTEN_RT_KASTEN_NAMESPACE: "k10"' && ok "API: Kasten's namespace passed" || no "API: Kasten's namespace passed"
 helm template t . -s templates/issassist/api/deployment.yaml 2>&1 | grep -q 'name: api-kasten-rt-secret-key' && ok "API: encryption key from its Secret" || no "API: encryption key from its Secret"
 exit $fail

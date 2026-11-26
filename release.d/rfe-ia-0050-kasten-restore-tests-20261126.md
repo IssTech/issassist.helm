@@ -9,7 +9,7 @@ date: 2026/11/26
   the read-only connector's.
 - **Where it is:** `values.yaml` → `kastenConnector.restoreTests.*` (`enabled`, `namespace`,
   `createNamespace`, `serviceAccountName`, `image`, `timeoutMinutes`, `keepOnFailureMaxHours`,
-  `maxReplicas`, `quota`) and `kastenConnector.yara.*` (`enabled`, `maxFileSizeMiB`); new
+  `maxReplicas`, `kastenNamespace`, `quota`) and `kastenConnector.yara.*` (`enabled`, `maxFileSizeMiB`); new
   template `templates/kasten/restore-tests.yaml`; the API gets them as `IA_KASTEN_RT_*` /
   `IA_KASTEN_YARA_*` through the `issassist-kasten` ConfigMap, and a new generated Secret
   `api-kasten-rt-secret-key` encrypts the stored keys.
@@ -17,16 +17,24 @@ date: 2026/11/26
   explicit true). Then: a ServiceAccount and its token **in the release namespace** (never
   in the restore-test namespace, where a restored pod could mount it); in the restore-test
   namespace only, a RoleBinding to `admin`, a Role to create/get/list/watch RestoreActions (no delete, no
-  update), deny-all NetworkPolicies (the scanner gets no network at all), a ResourceQuota (no
+  update) and to list/delete Gateway API HTTPRoutes and OpenShift Routes there (which `admin`
+  does not cover), deny-all NetworkPolicies (the scanner gets no network at all), a ResourceQuota (no
   LoadBalancers or NodePorts) and a LimitRange; plus one ClusterRole that can only get/list
   restore points. **No cluster-wide namespace rights and no admission policy.** The connector is
   unchanged. `default`, `kube-*`, `kasten-io` and the release namespace are refused as the
-  restore-test namespace, because teardown empties it.
+  restore-test namespace, because teardown empties it. **No rights in Kasten's namespace and
+  no TransformSet rights:** Kasten 9 applies a restore's transforms only for a caller allowed
+  to create TransformSets there, so IssAssist sends none and refuses a key that could
+  (`kastenNamespace`, default `podLogs.namespace`, says where to check). **No
+  imagePullSecrets:** a registry Secret in the restore-test namespace could be mounted by any
+  restored pod, so the scanner image is public and pulled without one.
 - **Operator steps:** **create the namespace (or `createNamespace: true`), label it
   `issassist.io/restore-test=true` and `pod-security.kubernetes.io/enforce=baseline`, and
   exclude it from every Kasten policy; apply the template on each Kasten cluster that runs restore tests
   (`helm template … -s templates/kasten/restore-tests.yaml | kubectl apply -f -`); register the
-  `issassist-restore-test-token` token for that cluster in IssAssist; set `image` to the
-  `issassist-restore-scanner` digest.** Treat the token as sensitive as the applications'
+  `issassist-restore-test-token` token for that cluster in IssAssist (needs `kasten:edit`
+  and `kasten:restore_test:edit`) and list the applications that may be restore-tested there
+  (empty: none); set `image` to the public `ghcr.io/isstech/issassist-restore-scanner`
+  digest (Dark Site: a mirror the nodes authenticate to).** Treat the token as sensitive as the applications'
   Secrets: a restore copies them into the namespace.
 - **Detail:** [issassist-api docs/projects/2026-11-26-kasten-restore-tests.md](https://github.com/IssTech/issassist-api/blob/review/docs/projects/2026-11-26-kasten-restore-tests.md)
