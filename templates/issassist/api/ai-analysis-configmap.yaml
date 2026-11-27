@@ -53,6 +53,14 @@ data:
   # Training feed to IssTech (IA-0031). Fails closed: only an explicit `true` renders
   # "true"; missing (an upgrade from an older release), false, yes or a typo is "false".
   IA_TRAINING_ALLOWED: {{ ternary "true" "false" (eq (toString $training.allowed) "true") | quote }}
+  {{- /* Token metering (2026/11/27): days each counted LLM call is kept; its day's sum
+         stays. Not `default 400`: read through hasKey like the caps, so a release
+         upgraded with --reuse-values from before this key existed still renders 400. The
+         API reads anything unreadable or below 1 as 400 and clamps to 31..3650. */}}
+  {{- $metering := $ai.metering | default dict }}
+  {{- $keep := 400 }}
+  {{- if and (hasKey $metering "keepDays") (not (kindIs "invalid" $metering.keepDays)) }}{{ $keep = $metering.keepDays }}{{ end }}
+  IA_AI_METERING_KEEP_DAYS: {{ $keep | toString | quote }}
   {{- $capDefaults := dict "claude" (list 5 20) "gemini" (list 5 20) "bob" (list 20 50) }}
   {{- range $id := list "local" "claude" "gemini" "bob" "copilot" }}
   {{- $p := get $providers $id | default dict }}

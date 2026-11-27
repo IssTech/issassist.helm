@@ -223,6 +223,13 @@ aiAnalysis:
   # Needs api.issTechConnect (the Dashboard enrolment) and reporting anonymisation.
   training:
     allowed: false
+  # Token metering (phase 1, 2026/11/27): every LLM call IssAssist makes is counted in
+  # this installation — tokens, which feature, which environment, where the model ran —
+  # for the IssAssist LLM licence page. Nothing is sent anywhere by this.
+  metering:
+    # Days each counted call is kept (31 to 3650). The per-day sums the licence page
+    # shows are kept regardless.
+    keepDays: 400
 
 # How the API and the TSM agent log. Applied to both, through the
 # issassist-logging ConfigMap; changing a value restarts their pods.
