@@ -112,6 +112,12 @@ aiAnalysis:
       allowed: false
       endpoint: ""          # must be https://, e.g. https://issassist-llm.issassist.svc:11434/v1
       model: "qwen2.5:14b"
+      # The model's context window in tokens, as the server runs it (Ollama:
+      # OLLAMA_CONTEXT_LENGTH, or its own default: 4096 on the GPU cluster today).
+      # A prompt plus its answer longer than this is cut by Ollama without a word, so
+      # the API refuses it instead (or shortens the answer, never below 1024 tokens).
+      # Raise it only together with the server's own setting.
+      contextTokens: 4096
       existingSecret: ""    # optional bearer token, key "api-key"
       apiKey: ""
       # In this cluster: no cap, tokens are counted and shown.
@@ -130,11 +136,16 @@ aiAnalysis:
       #     this installation's client certificate, one per install;
       #   caConfigMap / caKey: the ConfigMap and key holding the public CA that signed
       #     the server's certificate. The server is then checked against it only.
-      # Mounted read-only at /etc/issassist-llm-client in the API pod, and nowhere else.
+      # Mounted read-only at /etc/issassist-llm-client in the API pod, and nowhere else,
+      # mode 0440: readable by root and the pod's fsGroup only, not by any other uid.
+      #   fsGroup: the API pod's fsGroup while clientTls is set (default 1000, the
+      #     image's own group). A whole number above 0. Change it only where a policy
+      #     (an OpenShift SCC range) requires another.
       clientTls:
         secretName: ""
         caConfigMap: ""
         caKey: ""
+        fsGroup: 1000
       # The endpoint outside this cluster is IssTech's own infrastructure (the GPU
       # cluster): it then counts as local (no EUR price or cap, and the Kasten and Overview
       # AI features may use it). Anonymisation, the salt and the Dark Site lock still apply,

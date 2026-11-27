@@ -70,6 +70,16 @@ data:
   {{- end }}
   IA_AI_LOCAL_ENDPOINT: {{ $endpoint | quote }}
   IA_AI_LOCAL_MODEL: {{ $local.model | default "" | quote }}
+  {{- /* The model's context window in tokens (2026/11/27). Ollama cuts a longer prompt
+         silently, so the API refuses or shortens the answer rather than send one. Not
+         `default`: an older release (--reuse-values) without the key gets 4096. */}}
+  {{- $ctx := 4096 }}
+  {{- if and (hasKey $local "contextTokens") (not (kindIs "invalid" $local.contextTokens)) }}{{ $ctx = $local.contextTokens }}{{ end }}
+  {{- $ctx = trim (toString $ctx) }}
+  {{- if not (regexMatch "^[1-9][0-9]{0,6}$" $ctx) }}
+  {{- fail "aiAnalysis.providers.local.contextTokens: a whole number of tokens from 1 to 9999999" }}
+  {{- end }}
+  IA_AI_LOCAL_CONTEXT_TOKENS: {{ $ctx | quote }}
   {{- /* The site's price for an endpoint outside this cluster. Empty or unreadable is
          read as 0 by the API, which then refuses such an endpoint (fails closed). */}}
   IA_AI_LOCAL_PRICE_IN: {{ $local.priceInEurPerMtok | default "" | toString | quote }}

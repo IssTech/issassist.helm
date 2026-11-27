@@ -43,6 +43,21 @@ expect "the CA without secretName fails"    "$half" -- --set aiAnalysis.provider
   --set aiAnalysis.providers.local.clientTls.caKey=isstech-gpu-ca.crt
 expect "caKey alone fails"                  "$half" -- --set aiAnalysis.providers.local.clientTls.caKey=isstech-gpu-ca.crt
 
+# The key's mode (2026/11/27): 0440 under the pod's fsGroup, never 0444 (every uid).
+fsg='aiAnalysis.providers.local.clientTls.fsGroup: a whole number from 1 to 999999999'
+expect "on: the files are mounted 0440"       'defaultMode: 0440' -- "${tls[@]}"
+expect_not "on: never 0444 (readable by every uid)" 'defaultMode: 0444' -- "${tls[@]}"
+expect "on: the pod's fsGroup is the image's group" '^        fsGroup: 1000$' -- "${tls[@]}"
+expect "on: another fsGroup renders"          '^        fsGroup: 2000$' -- "${tls[@]}" \
+  --set aiAnalysis.providers.local.clientTls.fsGroup=2000
+expect "on: fsGroup gone (older release) is 1000" '^        fsGroup: 1000$' -- "${tls[@]}" \
+  --set aiAnalysis.providers.local.clientTls.fsGroup=null
+expect "on: fsGroup 0 (root's group) fails"   "$fsg" -- "${tls[@]}" --set aiAnalysis.providers.local.clientTls.fsGroup=0
+expect "on: fsGroup not a number fails"       "$fsg" -- "${tls[@]}" --set aiAnalysis.providers.local.clientTls.fsGroup=abc
+expect "on: fsGroup negative fails"           "$fsg" -- "${tls[@]}" --set aiAnalysis.providers.local.clientTls.fsGroup=-5
+expect_not "off by default: no fsGroup"       'fsGroup:' --
+expect_not "off: fsGroup alone is not client TLS" 'fsGroup:|llm-client-tls' -- --set aiAnalysis.providers.local.clientTls.fsGroup=2000
+
 # Only the API workload mounts the Secret: every object that names it, with every
 # optional component switched on, must be the API Deployment. `kind name` per object.
 owners=$(render -f ci/all-optional-values.yaml "${tls[@]}" | awk -v s="$secret" '
@@ -67,4 +82,11 @@ expect "own infrastructure without clientTls fails" 'ownInfrastructure needs aiA
 expect "own infrastructure with clientTls is on"   'IA_AI_LOCAL_OWN_INFRASTRUCTURE: "true"' -- "${own[@]}" "${tls[@]}"
 expect "ownInfrastructure yes is not on"           'IA_AI_LOCAL_OWN_INFRASTRUCTURE: "false"' -- --set aiAnalysis.providers.local.ownInfrastructure=yes "${tls[@]}"
 expect "ownInfrastructure gone (older release) is off" 'IA_AI_LOCAL_OWN_INFRASTRUCTURE: "false"' -- --set aiAnalysis.providers.local.ownInfrastructure=null
+# The context window (2026/11/27): what the API budgets a prompt against.
+ctxe='aiAnalysis.providers.local.contextTokens: a whole number of tokens'
+expect "context window 4096 by default"        'IA_AI_LOCAL_CONTEXT_TOKENS: "4096"' --
+expect "context window 8192 renders"           'IA_AI_LOCAL_CONTEXT_TOKENS: "8192"' -- --set aiAnalysis.providers.local.contextTokens=8192
+expect "context window gone (older release) is 4096" 'IA_AI_LOCAL_CONTEXT_TOKENS: "4096"' -- --set aiAnalysis.providers.local.contextTokens=null
+expect "context window 0 fails"                "$ctxe" -- --set aiAnalysis.providers.local.contextTokens=0
+expect "context window not a number fails"     "$ctxe" -- --set aiAnalysis.providers.local.contextTokens=lots
 exit $fail

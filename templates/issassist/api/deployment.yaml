@@ -24,6 +24,14 @@ spec:
       serviceAccountName: api
       dnsPolicy: ClusterFirst
       restartPolicy: Always
+      {{- if $llmTls.secretName }}
+      # The LLM client key (llm-client-tls below) is mounted 0440 and owned by this
+      # group, which Kubernetes adds to the container's groups: the API reads it, any
+      # other uid cannot (2026/11/27). Only with clientTls set, so an installation
+      # without it renders as before (an OpenShift SCC may refuse a fixed fsGroup).
+      securityContext:
+        fsGroup: {{ $llmTls.fsGroup }}
+      {{- end }}
       imagePullSecrets:
         - name: {{ include "issassist.imagePullSecretName" . }}
 
@@ -332,11 +340,11 @@ spec:
             secretName: smtp-auth
         {{- if $llmTls.secretName }}
         # Only the two keys the API reads, and only the CA's public certificate from the
-        # ConfigMap. 0444: the image runs as a non-root user without a fixed uid or an
-        # fsGroup, so a root-only 0400 file could not be read.
+        # ConfigMap. 0440 with the pod's fsGroup above: root and that group only. Was 0444
+        # (readable by every uid) until 2026/11/27.
         - name: llm-client-tls
           projected:
-            defaultMode: 0444
+            defaultMode: 0440
             sources:
               - secret:
                   name: {{ $llmTls.secretName | quote }}

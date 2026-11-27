@@ -121,6 +121,19 @@ the first call. Read through `default dict` for --reuse-values from older releas
 {{- if and (gt $set 0) (lt $set 3) -}}
 {{- fail "aiAnalysis.providers.local.clientTls: set secretName, caConfigMap and caKey together, or none of them" -}}
 {{- end -}}
+{{- /* The API pod's fsGroup while the files are mounted (2026/11/27): the key is mounted
+       0440, root and this group, so no other uid in the container can read it. A whole
+       number above 0: 0 is root's group and would defeat the point. Default 1000, the
+       image's own `issassist` group. Not part of the all-or-none count above. */ -}}
+{{- if $out.secretName -}}
+{{- $fsGroup := 1000 -}}
+{{- if and (hasKey $tls "fsGroup") (not (kindIs "invalid" $tls.fsGroup)) -}}{{- $fsGroup = $tls.fsGroup -}}{{- end -}}
+{{- $fsGroup = trim (toString $fsGroup) -}}
+{{- if not (regexMatch "^[1-9][0-9]{0,8}$" $fsGroup) -}}
+{{- fail "aiAnalysis.providers.local.clientTls.fsGroup: a whole number from 1 to 999999999 (not 0, root's group)" -}}
+{{- end -}}
+{{- $_ := set $out "fsGroup" $fsGroup -}}
+{{- end -}}
 {{- $out | toJson -}}
 {{- end }}
 
