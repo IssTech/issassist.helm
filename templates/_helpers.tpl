@@ -100,6 +100,31 @@ issassist-ai-{{ .id }}-key
 {{- end }}
 
 {{/*
+The local AI provider's client certificate (mutual TLS, 2026/11/26), as JSON:
+{"secretName": ..., "caConfigMap": ..., "caKey": ...}, each trimmed. All empty is off.
+Fails the render when some are set and some are not: the API would refuse a
+half-configured provider anyway, and a chart that renders it hides the mistake until
+the first call. Read through `default dict` for --reuse-values from older releases.
+*/}}
+{{- define "issassist.llmClientTls" -}}
+{{- $providers := (.Values.aiAnalysis | default dict).providers | default dict -}}
+{{- $local := $providers.local | default dict -}}
+{{- $tls := dict -}}
+{{- if kindIs "map" $local -}}{{- $tls = $local.clientTls | default dict -}}{{- end -}}
+{{- if not (kindIs "map" $tls) -}}{{- $tls = dict -}}{{- end -}}
+{{- $out := dict
+      "secretName" (trim (toString ($tls.secretName | default "")))
+      "caConfigMap" (trim (toString ($tls.caConfigMap | default "")))
+      "caKey" (trim (toString ($tls.caKey | default ""))) -}}
+{{- $set := 0 -}}
+{{- range $v := values $out }}{{ if $v }}{{ $set = add1 $set }}{{ end }}{{ end -}}
+{{- if and (gt $set 0) (lt $set 3) -}}
+{{- fail "aiAnalysis.providers.local.clientTls: set secretName, caConfigMap and caKey together, or none of them" -}}
+{{- end -}}
+{{- $out | toJson -}}
+{{- end }}
+
+{{/*
 IBM Bob's gateways (decided 2026/11/04), as JSON: {"regions": {name: address},
 "region": the default, "fixed": a customer's own address or ""}. The web GUI
 chooses among `regions`; the admission policy admits these addresses and no other.

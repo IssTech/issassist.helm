@@ -117,6 +117,31 @@ aiAnalysis:
       # In this cluster: no cap, tokens are counted and shown.
       dailyCap: 0
       dailyCapMax: 0
+      # An endpoint outside this cluster (e.g. the GPU cluster's Ollama) costs money and
+      # is not allowed without a price above 0 for both directions, so the daily cap can
+      # stop it. EUR per million tokens: an internal cost price, never on an invoice.
+      # Empty: no price, so such an endpoint stays unusable.
+      priceInEurPerMtok: ""     # e.g. "0.10"
+      priceOutEurPerMtok: ""
+      # Mutual TLS to the endpoint (first test for the 2026/12/04 demo; to be revisited
+      # before release). All empty: off, and the server is checked against the system
+      # CAs as before. Set all three or none: one without the others fails the render.
+      #   secretName: a kubernetes.io/tls Secret in this namespace (tls.crt + tls.key),
+      #     this installation's client certificate, one per install;
+      #   caConfigMap / caKey: the ConfigMap and key holding the public CA that signed
+      #     the server's certificate. The server is then checked against it only.
+      # Mounted read-only at /etc/issassist-llm-client in the API pod, and nowhere else.
+      clientTls:
+        secretName: ""
+        caConfigMap: ""
+        caKey: ""
+      # The endpoint outside this cluster is IssTech's own infrastructure (the GPU
+      # cluster): it then counts as local (no EUR price or cap, and the Kasten and Overview
+      # AI features may use it). Anonymisation, the salt and the Dark Site lock still apply,
+      # because the data leaves this cluster. Needs clientTls (the render fails without
+      # it); the API also ignores it unless all three files are readable. Staging only:
+      # a first test for the 2026/12/04 demo, to be revisited before release.
+      ownInfrastructure: false
     claude:
       allowed: false
       # Naming a Secret here means the installation owns Claude's key: the web GUI

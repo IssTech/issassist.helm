@@ -26,6 +26,14 @@ aiAnalysis:
   debugWizard:
     enabled: true
   providers:
+    local:
+      priceInEurPerMtok: "0.10"
+      priceOutEurPerMtok: "0.10"
+      clientTls:
+        secretName: issassist-staging-to-ollama
+        caConfigMap: isstech-ca-bundle
+        caKey: isstech-gpu-ca.crt
+      ownInfrastructure: true
     bob:
       allowed: true
       image: ghcr.io/isstech/issassist-bob-runner@sha256:0000000000000000000000000000000000000000000000000000000000000007

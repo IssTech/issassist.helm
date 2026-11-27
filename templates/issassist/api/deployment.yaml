@@ -1,4 +1,5 @@
 {{ if .Values.api.enabled }}
+{{- $llmTls := include "issassist.llmClientTls" . | fromJson }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -247,6 +248,17 @@ spec:
                   optional: true
             {{- end }}
             {{- end }}
+            {{- if $llmTls.secretName }}
+            # The local AI provider's client certificate and the CA its server is checked
+            # against (mutual TLS, aiAnalysis.providers.local.clientTls). Paths only: the
+            # files are the read-only mount below, in this pod and no other.
+            - name: IA_AI_LOCAL_CA
+              value: "/etc/issassist-llm-client/ca.crt"
+            - name: IA_AI_LOCAL_CERT
+              value: "/etc/issassist-llm-client/tls.crt"
+            - name: IA_AI_LOCAL_KEY
+              value: "/etc/issassist-llm-client/tls.key"
+            {{- end }}
             {{if .Values.global.mail.smtpHost }}
             - name: IA_SMTP_HOST
               value: {{ .Values.global.mail.smtpHost | quote }}
@@ -288,6 +300,11 @@ spec:
             - name: issassist-ca-cert
               mountPath: "/mnt/issassist-ca.crt"
               subPath: "tls.crt"
+            {{- if $llmTls.secretName }}
+            - name: llm-client-tls
+              mountPath: "/etc/issassist-llm-client"
+              readOnly: true
+            {{- end }}
       volumes:
         - name: api-config
           configMap:
@@ -313,4 +330,25 @@ spec:
         - name: smtp-auth
           secret:
             secretName: smtp-auth
+        {{- if $llmTls.secretName }}
+        # Only the two keys the API reads, and only the CA's public certificate from the
+        # ConfigMap. 0444: the image runs as a non-root user without a fixed uid or an
+        # fsGroup, so a root-only 0400 file could not be read.
+        - name: llm-client-tls
+          projected:
+            defaultMode: 0444
+            sources:
+              - secret:
+                  name: {{ $llmTls.secretName | quote }}
+                  items:
+                    - key: tls.crt
+                      path: tls.crt
+                    - key: tls.key
+                      path: tls.key
+              - configMap:
+                  name: {{ $llmTls.caConfigMap | quote }}
+                  items:
+                    - key: {{ $llmTls.caKey | quote }}
+                      path: ca.crt
+        {{- end }}
 {{ end }}
