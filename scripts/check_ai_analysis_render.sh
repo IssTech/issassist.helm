@@ -189,4 +189,10 @@ expect "the training feed is not allowed by default"   'IA_TRAINING_ALLOWED: "fa
 expect "training.allowed true allows it"               'IA_TRAINING_ALLOWED: "true"' -- --set aiAnalysis.training.allowed=true
 expect "training.allowed yes does not"                 'IA_TRAINING_ALLOWED: "false"' -- --set aiAnalysis.training.allowed=yes
 expect "training gone (older release) does not"        'IA_TRAINING_ALLOWED: "false"' -- --set aiAnalysis.training=null
+# Token metering (2026/11/27): aiAnalysis.metering.keepDays -> ConfigMap -> env.
+expect "keepDays renders 400 by default"               'IA_AI_METERING_KEEP_DAYS: "400"' --
+expect "keepDays is the value given"                   'IA_AI_METERING_KEEP_DAYS: "90"' -- --set aiAnalysis.metering.keepDays=90
+expect "metering gone (older release) renders 400"     'IA_AI_METERING_KEEP_DAYS: "400"' -- --set aiAnalysis.metering=null
+expect "keepDays null renders 400"                     'IA_AI_METERING_KEEP_DAYS: "400"' -- --set aiAnalysis.metering.keepDays=null
+expect "the API pod reads the AI ConfigMap"            'name: issassist-ai-analysis' --
 exit $fail
