@@ -60,7 +60,8 @@ expect_not "off: fsGroup alone is not client TLS" 'fsGroup:|llm-client-tls' -- -
 
 # Only the API workload mounts the Secret: every object that names it, with every
 # optional component switched on, must be the API Deployment. `kind name` per object.
-owners=$(render -f ci/all-optional-values.yaml "${tls[@]}" | awk -v s="$secret" '
+owners=$(render -f ci/all-optional-values.yaml "${tls[@]}" \
+  --set-string "aiAnalysis.providers.local.ownInfrastructureUntil=$(date -u -d '+30 days' +%Y/%m/%d)" | awk -v s="$secret" '
   function flush() { if (hit) print kind, name; kind=""; name=""; hit=0; meta=0 }
   /^---/ { flush(); next }
   /^kind: / { kind=$2 }
@@ -79,7 +80,50 @@ expect "the out price renders"              'IA_AI_LOCAL_PRICE_OUT: "0.2"' -- --
 own=(--set aiAnalysis.providers.local.ownInfrastructure=true)
 expect "own infrastructure is off by default"      'IA_AI_LOCAL_OWN_INFRASTRUCTURE: "false"' --
 expect "own infrastructure without clientTls fails" 'ownInfrastructure needs aiAnalysis.providers.local.clientTls' -- "${own[@]}"
-expect "own infrastructure with clientTls is on"   'IA_AI_LOCAL_OWN_INFRASTRUCTURE: "true"' -- "${own[@]}" "${tls[@]}"
+# Priced, capped (D5 = C) and with an end date (D2 = B), owner decisions 2026/11/27.
+until_ok=$(date -u -d "+30 days" +%Y/%m/%d)
+latest=$(date -u -d "+92 days" +%Y/%m/%d)
+paid=(--set-string aiAnalysis.providers.local.priceInEurPerMtok=10
+      --set-string aiAnalysis.providers.local.priceOutEurPerMtok=10
+      --set aiAnalysis.providers.local.dailyCap=1.5 --set aiAnalysis.providers.local.dailyCapMax=5
+      --set-string "aiAnalysis.providers.local.ownInfrastructureUntil=${until_ok}")
+expect "own infrastructure with clientTls is on"   'IA_AI_LOCAL_OWN_INFRASTRUCTURE: "true"' -- "${own[@]}" "${tls[@]}" "${paid[@]}"
+expect "the end date renders ISO" "IA_AI_LOCAL_OWN_INFRASTRUCTURE_UNTIL: \"${until_ok//\//-}\"" -- "${own[@]}" "${tls[@]}" "${paid[@]}"
+expect "no end date when own infrastructure is off" 'IA_AI_LOCAL_OWN_INFRASTRUCTURE_UNTIL: ""' --
+expect "the date 92 days ahead is the latest allowed" 'IA_AI_LOCAL_OWN_INFRASTRUCTURE: "true"' -- "${own[@]}" "${tls[@]}" "${paid[@]}" \
+  --set-string "aiAnalysis.providers.local.ownInfrastructureUntil=${latest}"
+expect "today is still allowed" 'IA_AI_LOCAL_OWN_INFRASTRUCTURE: "true"' -- "${own[@]}" "${tls[@]}" "${paid[@]}" \
+  --set-string "aiAnalysis.providers.local.ownInfrastructureUntil=$(date -u +%Y/%m/%d)"
+unpriced='ownInfrastructure is priced and capped like any endpoint outside this cluster: set priceInEurPerMtok'
+uncapped='ownInfrastructure is priced and capped like any endpoint outside this cluster: set dailyCap'
+expect "own infrastructure without a price fails"    "$unpriced" -- "${own[@]}" "${tls[@]}" "${paid[@]}" \
+  --set-string aiAnalysis.providers.local.priceInEurPerMtok=
+expect "own infrastructure at price 0 fails"         "$unpriced" -- "${own[@]}" "${tls[@]}" "${paid[@]}" \
+  --set-string aiAnalysis.providers.local.priceOutEurPerMtok=0
+expect "own infrastructure with a price of abc fails" "$unpriced" -- "${own[@]}" "${tls[@]}" "${paid[@]}" \
+  --set-string aiAnalysis.providers.local.priceOutEurPerMtok=abc
+expect "own infrastructure without a cap fails"      "$uncapped" -- "${own[@]}" "${tls[@]}" "${paid[@]}" \
+  --set aiAnalysis.providers.local.dailyCap=0
+expect "own infrastructure without a cap maximum fails" "$uncapped" -- "${own[@]}" "${tls[@]}" "${paid[@]}" \
+  --set aiAnalysis.providers.local.dailyCapMax=0
+expect "own infrastructure without an end date fails" \
+  'ownInfrastructureUntil is required with ownInfrastructure: true' -- "${own[@]}" "${tls[@]}" "${paid[@]}" \
+  --set-string aiAnalysis.providers.local.ownInfrastructureUntil=
+past=$(date -u -d "-1 day" +%Y/%m/%d)
+expect "an end date that has passed fails, as the mockup words it" \
+  "ownInfrastructureUntil \\(${past}\\) has passed: own infrastructure was a staging test. Remove ownInfrastructure, or set a new date \\(at most ${latest}\\) after reviewing it." \
+  -- "${own[@]}" "${tls[@]}" "${paid[@]}" --set-string "aiAnalysis.providers.local.ownInfrastructureUntil=${past}"
+far=$(date -u -d "+93 days" +%Y/%m/%d)
+expect "an end date more than 92 days ahead fails" "ownInfrastructureUntil \\(${far}\\) is more than 92 days ahead" \
+  -- "${own[@]}" "${tls[@]}" "${paid[@]}" --set-string "aiAnalysis.providers.local.ownInfrastructureUntil=${far}"
+for zone in Europe/Stockholm America/New_York Pacific/Kiritimati UTC; do
+  if TZ=$zone helm template t . "${own[@]}" "${tls[@]}" "${paid[@]}" 2>&1 | grep -q 'IA_AI_LOCAL_OWN_INFRASTRUCTURE: "true"'
+  then echo "ok   a valid end date renders with TZ=$zone"; else echo "FAIL a valid end date renders with TZ=$zone"; fail=1; fi
+done
+for bad in 2026/02/30 2027/13/01 2026-12-31 31/12/2026 2026/1/5 tomorrow; do
+  expect "end date ${bad} is not a date (never rolled over)" "ownInfrastructureUntil \\(${bad}\\) is not a date" \
+    -- "${own[@]}" "${tls[@]}" "${paid[@]}" --set-string "aiAnalysis.providers.local.ownInfrastructureUntil=${bad}"
+done
 expect "ownInfrastructure yes is not on"           'IA_AI_LOCAL_OWN_INFRASTRUCTURE: "false"' -- --set aiAnalysis.providers.local.ownInfrastructure=yes "${tls[@]}"
 expect "ownInfrastructure gone (older release) is off" 'IA_AI_LOCAL_OWN_INFRASTRUCTURE: "false"' -- --set aiAnalysis.providers.local.ownInfrastructure=null
 # The context window (2026/11/27): what the API budgets a prompt against.

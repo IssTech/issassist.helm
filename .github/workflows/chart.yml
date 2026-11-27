@@ -94,9 +94,12 @@ jobs:
         run: |
           set -euo pipefail
           helm lint --strict .
+          # ownInfrastructureUntil expires by design (D2 = B, at most 92 days ahead), so
+          # it is given here, 30 days from today (UTC), not written into ci/.
+          until="aiAnalysis.providers.local.ownInfrastructureUntil=$(date -u -d '+30 days' +%Y/%m/%d)"
           for f in ci/*-values.yaml; do
             echo "--- with $f"
-            helm lint --strict . -f "$f"
+            helm lint --strict . -f "$f" --set-string "$until"
           done
 
       - name: helm template
@@ -104,9 +107,10 @@ jobs:
           set -euo pipefail
           out="$RUNNER_TEMP/render"; mkdir -p "$out"
           helm template issassist . --namespace issassist > "$out/default.yaml"
+          until="aiAnalysis.providers.local.ownInfrastructureUntil=$(date -u -d '+30 days' +%Y/%m/%d)"
           for f in ci/*-values.yaml; do
             name=$(basename "$f" -values.yaml)
-            helm template issassist . --namespace issassist -f "$f" > "$out/$name.yaml"
+            helm template issassist . --namespace issassist -f "$f" --set-string "$until" > "$out/$name.yaml"
           done
           {
             echo "### Rendered with helm ${{ matrix.helm }}"
