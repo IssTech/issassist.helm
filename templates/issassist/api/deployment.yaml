@@ -73,7 +73,8 @@ spec:
             # IA_AVEPOINT_ALLOWED_HOSTS: where the AvePoint credential may go (#437)
             - configMapRef:
                 name: issassist-avepoint
-            # IA_KASTEN_POD_LOGS_NAMESPACE: K10's namespace for support pod logs (#493)
+            # IA_KASTEN_POD_LOGS_NAMESPACE: K10's namespace for support pod logs (#493);
+            # IA_KASTEN_RT_*, IA_KASTEN_YARA_*: Kasten restore tests (IA-0050, #539)
             - configMapRef:
                 name: issassist-kasten
           env:
@@ -204,6 +205,12 @@ spec:
                 secretKeyRef:
                   name: api-avepoint-secret-key
                   key: "avepoint-secret-key"
+            # Encrypts the Kasten restore-test keys (IA-0050).
+            - name: IA_KASTEN_RT_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: api-kasten-rt-secret-key
+                  key: "kasten-rt-secret-key"
             - name: IA_REPORTING_SALT
               valueFrom:
                 secretKeyRef:

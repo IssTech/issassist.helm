@@ -10,6 +10,12 @@ kastenConnector:
   inventory: true
   podLogs:
     enabled: true
+  restoreTests:
+    enabled: true
+    createNamespace: true
+    image: ghcr.io/isstech/issassist-restore-scanner@sha256:0000000000000000000000000000000000000000000000000000000000000009
+  yara:
+    enabled: true
 api:
   postgres:
     readonlyRole:
