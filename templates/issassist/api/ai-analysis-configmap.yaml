@@ -90,7 +90,45 @@ data:
   {{- if and $own (not (include "issassist.llmClientTls" . | fromJson).secretName) }}
   {{- fail "aiAnalysis.providers.local.ownInfrastructure needs aiAnalysis.providers.local.clientTls (secretName, caConfigMap, caKey)" }}
   {{- end }}
+  {{- /* Own infrastructure is priced and capped like any endpoint outside this cluster
+         (owner decision D5 = C, 2026/11/27): without a price the API would refuse it,
+         and without a cap the GPU's own budget would be the first to say no. */}}
+  {{- $ownUntil := "" }}
+  {{- if $own }}
+  {{- $pin := trim (toString ($local.priceInEurPerMtok | default "")) }}
+  {{- $pout := trim (toString ($local.priceOutEurPerMtok | default "")) }}
+  {{- if not (and (regexMatch "^[0-9]+(\\.[0-9]+)?$" $pin) (regexMatch "^[0-9]+(\\.[0-9]+)?$" $pout) (gt (float64 $pin) 0.0) (gt (float64 $pout) 0.0)) }}
+  {{- fail "aiAnalysis.providers.local.ownInfrastructure is priced and capped like any endpoint outside this cluster: set priceInEurPerMtok and priceOutEurPerMtok above 0" }}
+  {{- end }}
+  {{- if not (and (gt (float64 ($local.dailyCap | default 0)) 0.0) (gt (float64 ($local.dailyCapMax | default 0)) 0.0)) }}
+  {{- fail "aiAnalysis.providers.local.ownInfrastructure is priced and capped like any endpoint outside this cluster: set dailyCap and dailyCapMax above 0 (EUR)" }}
+  {{- end }}
+  {{- /* And it ends on a date (owner decision D2 = B, 2026/11/27): YYYY/MM/DD, today
+         (UTC) at the earliest and at most 92 days ahead. A date that does not exist
+         (2026/02/30) is refused, never rolled over. No automatic renewal: a person sets
+         a new date after reviewing it. The round trip that refuses 2026/02/30 parses and
+         formats in the same (local) zone: mixing in UTC shifted every date by a day east
+         of UTC (security review 2026/11/27). */}}
+  {{- $today := dateInZone "2006/01/02" now "UTC" }}
+  {{- $latest := dateInZone "2006/01/02" (dateModify "+2208h" now) "UTC" }}
+  {{- $v := trim (toString ($local.ownInfrastructureUntil | default "")) }}
+  {{- if not $v }}
+  {{- fail (printf "aiAnalysis.providers.local.ownInfrastructureUntil is required with ownInfrastructure: true: own infrastructure is a staging test. Set the date it ends (YYYY/MM/DD, at most %s)." $latest) }}
+  {{- end }}
+  {{- if or (not (regexMatch "^[0-9]{4}/[0-9]{2}/[0-9]{2}$" $v)) (ne (date "2006/01/02" (toDate "2006/01/02" $v)) $v) }}
+  {{- fail (printf "aiAnalysis.providers.local.ownInfrastructureUntil (%s) is not a date: write it YYYY/MM/DD, a day that exists, at most %s." $v $latest) }}
+  {{- end }}
+  {{- if lt $v $today }}
+  {{- fail (printf "aiAnalysis.providers.local.ownInfrastructureUntil (%s) has passed: own infrastructure was a staging test. Remove ownInfrastructure, or set a new date (at most %s) after reviewing it." $v $latest) }}
+  {{- end }}
+  {{- if gt $v $latest }}
+  {{- fail (printf "aiAnalysis.providers.local.ownInfrastructureUntil (%s) is more than 92 days ahead: set a date no later than %s." $v $latest) }}
+  {{- end }}
+  {{- $ownUntil = replace "/" "-" $v }}
+  {{- end }}
   IA_AI_LOCAL_OWN_INFRASTRUCTURE: {{ ternary "true" "false" $own | quote }}
+  {{- /* ISO on the wire; empty when own infrastructure is off. */}}
+  IA_AI_LOCAL_OWN_INFRASTRUCTURE_UNTIL: {{ $ownUntil | quote }}
   {{- /* IBM Bob's run pods (slice 4). `default` is not used for numbers: Sprig treats
          0 as empty, and a limit of 0 is a choice. */}}
   {{- $bob := $providers.bob | default dict }}

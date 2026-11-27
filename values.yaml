@@ -120,7 +120,8 @@ aiAnalysis:
       contextTokens: 4096
       existingSecret: ""    # optional bearer token, key "api-key"
       apiKey: ""
-      # In this cluster: no cap, tokens are counted and shown.
+      # In this cluster: no cap, tokens are counted and shown. Own infrastructure (below)
+      # is capped in EUR like any endpoint outside this cluster: both above 0 there.
       dailyCap: 0
       dailyCapMax: 0
       # An endpoint outside this cluster (e.g. the GPU cluster's Ollama) costs money and
@@ -147,12 +148,22 @@ aiAnalysis:
         caKey: ""
         fsGroup: 1000
       # The endpoint outside this cluster is IssTech's own infrastructure (the GPU
-      # cluster): it then counts as local (no EUR price or cap, and the Kasten and Overview
-      # AI features may use it). Anonymisation, the salt and the Dark Site lock still apply,
+      # cluster): it then counts as local for the Kasten, Overview and Blueprint AI
+      # features, and is still priced and capped like any endpoint outside this cluster
+      # (owner decision D5 = C, 2026/11/27): the render fails without priceIn/OutEurPerMtok
+      # and dailyCap/dailyCapMax above 0. Anonymisation, the salt and the Dark Site lock still apply,
       # because the data leaves this cluster. Needs clientTls (the render fails without
       # it); the API also ignores it unless all three files are readable. Staging only:
       # a first test for the 2026/12/04 demo, to be revisited before release.
       ownInfrastructure: false
+      # Required with ownInfrastructure: true (owner decision D2 = B, 2026/11/27): the last
+      # day (UTC, YYYY/MM/DD) it counts, today at the earliest and at most 92 days ahead.
+      # The render fails when it is missing, not a real date (2026/02/30 is refused, never
+      # rolled over), past or too far ahead. From the day after, the API uses the endpoint
+      # as an ordinary one outside this cluster (priced, capped, no Kasten/Overview/
+      # Blueprint features) and keeps using it. No automatic renewal: set a new date after
+      # reviewing it.
+      ownInfrastructureUntil: ""
     claude:
       allowed: false
       # Naming a Secret here means the installation owns Claude's key: the web GUI

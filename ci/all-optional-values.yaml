@@ -33,6 +33,11 @@ aiAnalysis:
         secretName: issassist-staging-to-ollama
         caConfigMap: isstech-ca-bundle
         caKey: isstech-gpu-ca.crt
+      # Priced and capped (D5 = C), and ending on a date (D2 = B, 2026/11/27). The date
+      # cannot live in this file: it expires by design (at most 92 days ahead), so the
+      # workflow and the render scripts pass one 30 days from today with --set-string.
+      dailyCap: 1.5
+      dailyCapMax: 5
       ownInfrastructure: true
     bob:
       allowed: true
