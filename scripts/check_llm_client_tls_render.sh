@@ -60,4 +60,11 @@ else echo "FAIL only the API Deployment mounts the client Secret (found: ${owner
 expect "no price by default"                'IA_AI_LOCAL_PRICE_IN: ""' --
 expect "a price renders"                    'IA_AI_LOCAL_PRICE_IN: "0.10"' -- --set-string aiAnalysis.providers.local.priceInEurPerMtok=0.10
 expect "the out price renders"              'IA_AI_LOCAL_PRICE_OUT: "0.2"' -- --set aiAnalysis.providers.local.priceOutEurPerMtok=0.2
+# Own infrastructure (2026/11/27): off by default, needs clientTls, only `true` is on.
+own=(--set aiAnalysis.providers.local.ownInfrastructure=true)
+expect "own infrastructure is off by default"      'IA_AI_LOCAL_OWN_INFRASTRUCTURE: "false"' --
+expect "own infrastructure without clientTls fails" 'ownInfrastructure needs aiAnalysis.providers.local.clientTls' -- "${own[@]}"
+expect "own infrastructure with clientTls is on"   'IA_AI_LOCAL_OWN_INFRASTRUCTURE: "true"' -- "${own[@]}" "${tls[@]}"
+expect "ownInfrastructure yes is not on"           'IA_AI_LOCAL_OWN_INFRASTRUCTURE: "false"' -- --set aiAnalysis.providers.local.ownInfrastructure=yes "${tls[@]}"
+expect "ownInfrastructure gone (older release) is off" 'IA_AI_LOCAL_OWN_INFRASTRUCTURE: "false"' -- --set aiAnalysis.providers.local.ownInfrastructure=null
 exit $fail

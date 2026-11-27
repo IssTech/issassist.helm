@@ -25,3 +25,19 @@ date: 2026/11/26
   **Also raise `aiAnalysis.providers.local.dailyCap` / `dailyCapMax` above 0 (EUR): they
   default to 0, which stops an endpoint outside the cluster even with a price set.**
 - **Where the detail is:** [issassist-api docs/projects/2026-11-26-issassist-llm-mtls.md](https://github.com/IssTech/issassist-api/blob/review/docs/projects/2026-11-26-issassist-llm-mtls.md)
+
+### `aiAnalysis.providers.local.ownInfrastructure` (2026/11/27)
+
+> **A first-test decision (Q-AI1 = a) for the Kasten demo on 2026/12/04, staging only.
+> It must be revisited before release.**
+
+- **What it is:** a switch that tells the API that the `local` endpoint outside this
+  cluster is IssTech's own infrastructure. It then counts as local: no EUR price or cap,
+  and it can be used by the Kasten and Overview AI features. Anonymisation, the salt and
+  the Dark Site lock still apply.
+- **Where it is:** `values.yaml` → `aiAnalysis.providers.local.ownInfrastructure` (default
+  `false`) → `IA_AI_LOCAL_OWN_INFRASTRUCTURE` in the `issassist-ai-analysis` ConfigMap.
+- **What changed for them:** nothing by default. **`true` without `clientTls` fails the
+  render.** Only a literal `true` switches it on. **Staging only; do not set it at a
+  customer site.**
+- **Where the detail is:** [issassist-api docs/projects/2026-11-26-issassist-llm-mtls.md](https://github.com/IssTech/issassist-api/blob/review/docs/projects/2026-11-26-issassist-llm-mtls.md)
